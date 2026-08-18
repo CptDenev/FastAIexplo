@@ -76,13 +76,13 @@ def main():
                 dls = DataBlock(
                     #input are images block, outputs are categories
                     blocks=(ImageBlock, CategoryBlock),
-                    #get all images from path
+                    #get all images from path given in dataloaders
                     get_items=get_image_files,
-                    #keep 20% for cross validation
+                    #keep 20% of our set for cross validation
                     splitter=RandomSplitter(valid_pct=0.2, seed=42),
                     #set y value as the name of our folder
                     get_y=parent_label,
-                    #rseize image to 192*192 and squish them not crop to keep all informations
+                    #resize image to 192*192 and squish them, no crop to keep all informations
                     item_tfms=[Resize(192, method='squish')]
                 ).dataloaders(path, bs=32, num_workers=0)
                 
