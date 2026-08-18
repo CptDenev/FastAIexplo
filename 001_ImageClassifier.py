@@ -15,7 +15,6 @@ def search_img(term, max_images=10):
     return L(islice(DDGS().images(term), max_images)).itemgot('image')
 
 
-
 def downloadDataSet(searches, path):
     for o in searches:
             dest = (path/o)
@@ -49,41 +48,62 @@ def trainOnDataSet(dls, epoch=3):
 
 def main():
     #create data set
+    
     searches = 'bird','forest'
     path = Path('bird_or_not')
+    isexit = False
+    print("1: download data set")
+    print("2: train on download data set")
+    print("3: predict on trained model")
+    print("0: exit")
 
+    while not isexit:
+        choice = int(input("enter a choice: "))
 
-    downloadDataSet(searches, path)
-    print("data set downloaded")
+        match choice:
 
-    cleanDataSet(path)
-    print("data set cleaned")
+            #create data set
+            case 1:
+                downloadDataSet(searches, path)
+                print("data set downloaded")
 
+                cleanDataSet(path)
+                print("data set cleaned")
 
-    #create DataBlock, need num_workers fixed to avoid core > 63 causing crash
-    dls = DataBlock(
-        #input are images block, outputs are categories
-        blocks=(ImageBlock, CategoryBlock),
-        #get all images from path
-        get_items=get_image_files,
-        #keep 20% for cross validation
-        splitter=RandomSplitter(valid_pct=0.2, seed=42),
-        #set y value as the name of our folder
-        get_y=parent_label,
-        #rseize image to 192*192 and squish them not crop to keep all informations
-        item_tfms=[Resize(192, method='squish')]
-    ).dataloaders(path, bs=32, num_workers=0)
+            #create data block and train
+            case 2:
+                #create DataBlock, need num_workers fixed to avoid core > 63 causing crash
+                dls = DataBlock(
+                    #input are images block, outputs are categories
+                    blocks=(ImageBlock, CategoryBlock),
+                    #get all images from path
+                    get_items=get_image_files,
+                    #keep 20% for cross validation
+                    splitter=RandomSplitter(valid_pct=0.2, seed=42),
+                    #set y value as the name of our folder
+                    get_y=parent_label,
+                    #rseize image to 192*192 and squish them not crop to keep all informations
+                    item_tfms=[Resize(192, method='squish')]
+                ).dataloaders(path, bs=32, num_workers=0)
+                
+                #dls.show_batch(max_n=6)
+            
+                #train the model on resnet18 with 3 epoch
+                learn = trainOnDataSet(dls, 3)
 
-    #dls.show_batch(max_n=6)
+            #try prediction
+            case 3:
+                #try model on local bird.jpg
+                is_bird,_,probs = learn.predict(PILImage.create('bird.jpg'))
+                print(f"This is a: {is_bird}.")
+                print(f"Probability it's a bird: {probs[0]:.4f}")
 
-    #train the model on resnet18 with 3 epoch
-    learn = trainOnDataSet(dls, 3)
+            case 0:
+                print("exit program")
+                isexit = True
 
-    #try model on local bird.jpg
-    is_bird,_,probs = learn.predict(PILImage.create('bird.jpg'))
-    print(f"This is a: {is_bird}.")
-    print(f"Probability it's a bird: {probs[0]:.4f}")
-
+            case _:
+                pass
 
 if __name__ == '__main__':
     main()
