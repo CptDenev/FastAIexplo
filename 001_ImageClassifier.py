@@ -86,23 +86,26 @@ def main():
                     #set y value as the name of our folder
                     get_y=parent_label,
                     #resize image to 192*192 and squish them, no crop to keep all informations
-                    item_tfms=[Resize(192, method='squish')]
+                    item_tfms=[Resize(192, method='squish')],
+                    #simulate rotation, scale and diverse image alterations
+                    batch_tfms=aug_transforms()
                 ).dataloaders(path, bs=32, num_workers=0)
                 
                 #dls.show_batch(max_n=6)
 
                 #train the model on resnet18 with 3 epoch
-                learn = trainOnDataSet(dls, 3)
+                learn = trainOnDataSet(dls, 9)
 
             #try prediction
             case 3:
                 #try model on local bird.jpg
-                is_bird,_,probs = learn.predict(PILImage.create('bird.jpg'))
+                is_bird,_,probs = learn.predict(PILImage.create('forest.jpg'))
                 print(f"This is a: {is_bird}.")
-                print(f"Probability it's a bird: {probs[0]:.4f}")
+                print(f"Probability : {probs[0]:.4f}")
 
             case 4:
                 learn.save('bird_learner')
+                learn.export('models/bird_learner.pkl')
 
             case 5:
                 #create DataBlock, need num_workers fixed to avoid core > 63 causing crash
