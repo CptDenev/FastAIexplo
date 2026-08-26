@@ -5,6 +5,8 @@ import numpy as np
 from torch import tensor
 import torch
 
+from sklearn.model_selection import train_test_split
+
 import time
 import sympy as sp
 
@@ -30,11 +32,13 @@ import sympy as sp
 #global variables
 path = 'csv'
 
+#csv load data from path
 def dldat(file='train.csv', path=path):
     fullpath = path + '/' + file
     df = pd.read_csv(fullpath)
     return df
 
+#csv clean data
 def dataclean(df):
     #identify missing var
     df.isna().sum()
@@ -43,6 +47,41 @@ def dataclean(df):
     #replace missing value by modes
     df.fillna(modes, inplace=True)
     return df
+
+
+#take 2 tensors and split them between train, valid and test sets
+def splitdata(t_indep, t_dep, train_frac=0.7, valid_frac=0.15, test_frac=0.15, seed=33):
+    assert abs(train_frac + valid_frac + test_frac - 1.0) < 1e-6, "total frac must alway be 1"
+
+    idx_train, idx_temp = train_test_split(
+        np.arrange(len(t_indep)),
+        train_size=train_frac,
+        random_state=seed
+    )
+
+    relative_valid = train_frac - (valid_frac + test_frac)
+    idx_valid, idx_test = train_test_split(
+        idx_temp,
+        test_size=relative_valid,
+        random_state=seed
+
+    )
+
+    return{
+        'train':(t_indep[idx_train],t_dep[idx_train]),
+        'valid':(t_indep[idx_valid],t_dep[idx_valid]),
+        'test': (t_indep[idx_test],t_dep[idx_test])
+    }
+
+
+
+def calc_preds(coeffs, indeps):
+    return (indeps*coeffs).sum(axis=1)
+
+
+
+def calc_loss(coeffs, indeps, deps):
+    return torch.abs(calc_preds(coeffs, indeps)-deps).mean()
 
 
 def main():
@@ -79,9 +118,23 @@ def main():
     #setup linear model
     torch.manual_seed(33)
 
+    #create random coeffs
     n_coeff = t_indep.shape[1]
     coeffs = torch.rand(n_coeff)-0.5
 
+    #dirty matrix mult to uniformize values
+    vals,indices = t_indep.max(dim=0)
+    t_indep = t_indep / vals
+
+    
+    coeffs.requires_grad_()
+    loss = calc_loss(coeffs, t_indep, t_dep)
+    loss.backward()
+
+    with torch.no_grad():
+        coeffs.sub_(coeffs.grad * 0.1)
+        coeffs.grad.zero_()
+        print(calc_loss(coeffs, t_indep, t_dep))
 
 
     
