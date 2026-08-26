@@ -114,6 +114,7 @@ def main():
        'Type_L', 'Type_M']
 
 
+
     #create tensors
 
     #create dependent variable
@@ -130,7 +131,7 @@ def main():
     #setup linear model
     torch.manual_seed(33)
 
-    #create random coeffs
+    #create random coeffs and create randomized coeffs
     n_coeff = t_indep.shape[1]
     coeffs = torch.rand(n_coeff)-0.5
 
@@ -138,37 +139,31 @@ def main():
     vals,indices = t_indep.max(dim=0)
     t_indep = t_indep / vals
 
-
+    #split data set
     splits = splitdata(t_indep, t_dep, train_frac=0.7, valid_frac=0.15, test_frac=0.15)
 
     t_indep_train, t_dep_train = splits['train']
     t_indep_valid, t_dep_valid = splits['valid']
     t_indep_test, t_dep_test = splits['test']
 
+    #train coefficients
     coeffs = train_model(epochs=100, lr=0.01, n_coeff=n_coeff, trn_indep=t_indep_train, trn_dep=t_dep_train)
     print(coeffs)
 
-
+    #use sigmoid for predictions
     preds = calc_preds_sigmoid(coeffs, t_indep_valid)
-    results = t_dep_valid.bool()==(preds>0.5)
-    print(results[:16])
-    print(results.float().mean())
 
-
-    #preds = calc_preds_sigmoid(coeffs, t_indep_valid)
+    #define a limit on predictions
     preds_bin = preds > 0.5
 
+    #reteive tp, fn and fp based on predictions
     tp = ((preds_bin==True) & (t_dep_valid.bool()==True)).sum().item()
     fn = ((preds_bin==False) & (t_dep_valid.bool()==True)).sum().item()
     fp = ((preds_bin==True) & (t_dep_valid.bool()==False)).sum().item()
 
     recall = tp / (tp + fn) if (tp+fn) > 0 else 0
     print(f"TP={tp}, FN={fn}, FP={fp}, recall={recall:.3f}")
-    
-    #plot sigmoid, base setup for future test
-    x = sp.symbols('x')
-    f1 = 1/(1+sp.exp(-x))
-    #sp.plot(f1, xlim=(-5,5), show=True)
+
 
 if __name__ == '__main__':
     main()
