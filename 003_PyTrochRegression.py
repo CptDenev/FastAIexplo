@@ -2,7 +2,7 @@ import pandas as pd
 import torch, torch.nn as nn
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import classification_report, roc_auc_score
+from sklearn.metrics import classification_report, roc_auc_score, precision_recall_curve
 
 # --- Data loading ---
 path = 'dataset'
@@ -92,21 +92,30 @@ for epoch in range(epochs):
 
 #put our model in eval mode
 model.eval()
-with torch.no_grad():
-    #proba in [0,1]
-    probs = torch.sigmoid(model(Xte_t))
-#put probs in a 1D vector
-probs = probs.squeeze()
-#prepare for sklearn
-probs = probs.numpy()
 
-#define preds at a 0.5 probability split
-preds = (probs >= 0.5).astype(int)
+threshold = 0.5
+while threshold !=2.0:
 
-#show preds report
-print(classification_report(yte, preds))
-#check probs prediction precision
-print("ROC-AUC :", roc_auc_score(yte, probs))
+    threshold = float(input("enter a threshold (between 0 and 1) or anything else to exit: "))
+
+    if(0.0<threshold<1.0):
+        with torch.no_grad():
+            #proba in [0,1]
+            probs = torch.sigmoid(model(Xte_t))
+        #put probs in a 1D vector
+        probs = probs.squeeze()
+        #prepare for sklearn
+        probs = probs.numpy()
+
+        #define preds at a threshold sigmoid split
+        preds = (probs >= threshold).astype(int)
+
+        #show preds report
+        print(classification_report(yte, preds))
+        #check probs prediction precision
+        print("ROC-AUC :", roc_auc_score(yte, probs))
+    else:
+        threshold = 2.0
 
 """
 def main():
