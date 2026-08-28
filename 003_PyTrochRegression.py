@@ -1,5 +1,6 @@
 import pandas as pd
 import torch, torch.nn as nn
+import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import classification_report, roc_auc_score, precision_recall_curve
@@ -93,29 +94,30 @@ for epoch in range(epochs):
 #put our model in eval mode
 model.eval()
 
-threshold = 0.5
-while threshold !=2.0:
 
-    threshold = float(input("enter a threshold (between 0 and 1) or anything else to exit: "))
+with torch.no_grad():
+    #proba in [0,1]
+    probs = torch.sigmoid(model(Xte_t))
+#put probs in a 1D vector
+probs = probs.squeeze()
+#prepare for sklearn
+probs = probs.numpy()
 
-    if(0.0<threshold<1.0):
-        with torch.no_grad():
-            #proba in [0,1]
-            probs = torch.sigmoid(model(Xte_t))
-        #put probs in a 1D vector
-        probs = probs.squeeze()
-        #prepare for sklearn
-        probs = probs.numpy()
+#find best trheshold by maximinzing f1 score
+precisions, recalls, thresholds = precision_recall_curve(yte, probs)
 
-        #define preds at a threshold sigmoid split
-        preds = (probs >= threshold).astype(int)
+# On aligne les tableaux (precision/recalls ont un point de plus que thresholds)
+f1s = 2 * precisions[1:] * recalls[1:] / (precisions[1:] + recalls[1:])
+best_idx = np.argmax(f1s)
 
-        #show preds report
-        print(classification_report(yte, preds))
-        #check probs prediction precision
-        print("ROC-AUC :", roc_auc_score(yte, probs))
-    else:
-        threshold = 2.0
+print(f"optimal threshold (F1 max) : {thresholds[best_idx]:.3f}")
+print(f"F1 class at threshold            : {f1s[best_idx]:.3f}")
+print(f"Precision at threhold     : {precisions[best_idx+1]:.3f}")
+print(f"Recall at threshold        : {recalls[best_idx+1]:.3f}")
+
+#check probs prediction precision
+print("ROC-AUC :", roc_auc_score(yte, probs))
+
 
 """
 def main():
