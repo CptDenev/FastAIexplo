@@ -72,7 +72,7 @@ opt = torch.optim.Adam(model.parameters(), lr=1e-3)
 
 
 # --- Training Loop ---
-epochs = 500
+epochs = 2500
 
 for epoch in range(epochs):
     #train our model on one epoch
@@ -103,10 +103,10 @@ probs = probs.squeeze()
 #prepare for sklearn
 probs = probs.numpy()
 
-#find best trheshold by maximinzing f1 score
+#compute all precisions, recalls and thresholds
 precisions, recalls, thresholds = precision_recall_curve(yte, probs)
 
-# On aligne les tableaux (precision/recalls ont un point de plus que thresholds)
+# comput f1 score
 f1s = 2 * precisions[1:] * recalls[1:] / (precisions[1:] + recalls[1:])
 best_idx = np.argmax(f1s)
 
