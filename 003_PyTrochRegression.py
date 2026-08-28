@@ -5,15 +5,22 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import classification_report, roc_auc_score
 
 # --- Data loading ---
-path = 'csv'
-file = "AI_I_2020.csv"
+path = 'dataset'
+file = "ai4i2020.csv"
 fullpath = path + '/' + file
 
 df = pd.read_csv(fullpath)  
 
 
-
 # --- Data Preparation ---
+
+#clean data
+df.isna().sum()
+#identify the most common value for each columns
+modes = df.mode().iloc[0]
+#replace missing value by modes
+df.fillna(modes, inplace=True)
+
 
 #we choose to  drop columns we don't want to keep
 X = df.drop(columns=["Machine failure", 
@@ -25,7 +32,9 @@ X = df.drop(columns=["Machine failure",
                      "Product ID"]).copy()
 
 #create new dummies for Type as is is non numerical, also  put drop_first at true to avoid dummy variable trap
-X["Type"] = pd.get_dummies(X["Type"], prefix="type", drop_first=True, dtype=int)
+dummies = pd.get_dummies(X["Type"], prefix="type", drop_first=True, dtype=int)
+X = pd.concat([X.drop(columns=["Type"]), dummies], axis=1)
+
 #stock our desired prediction value
 y = df["Machine failure"].values
 
@@ -61,9 +70,8 @@ criterion = nn.BCEWithLogitsLoss(pos_weight=torch.tensor(n_neg / n_pos))
 opt = torch.optim.Adam(model.parameters(), lr=1e-3)
 
 
-
 # --- Training Loop ---
-epochs = 50
+epochs = 500
 
 for epoch in range(epochs):
     #train our model on one epoch
@@ -76,9 +84,8 @@ for epoch in range(epochs):
     loss.backward()
     #call Adam to move our weight
     opt.step()
-    if epoch % 10 == 0:
+    if epoch % 100 == 0:
         print(f"epoch {epoch:3d} | loss {loss.item():.4f}")
-
 
 
 # --- Evaluation ---
@@ -96,13 +103,15 @@ probs = probs.numpy()
 #define preds at a 0.5 probability split
 preds = (probs >= 0.5).astype(int)
 
-
+#show preds report
 print(classification_report(yte, preds))
+#check probs prediction precision
 print("ROC-AUC :", roc_auc_score(yte, probs))
 
-
+"""
 def main():
     pass
 
 if __name__ == '__main__':
     main()
+"""
