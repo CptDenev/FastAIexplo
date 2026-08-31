@@ -46,11 +46,10 @@ def main():
     isexit = False
 
     print("1: resize existing images")
-    print("2: train on download data set")
-    print("3: predict on trained model")
+    print("2: train on data set")
+    print("3: predict from trained model")
     print("4: export the trained model")
     print("5: load en existing trained model")
-    print("6 : resize existing images")
     print("0: exit")
 
     while not isexit:
@@ -91,9 +90,9 @@ def main():
                 #try model on local bird.jpg
                 image_name = input("enter the name of our image :")
                 image_name += '.jpg'
-                is_category,_,probs = learn.predict(PILImage.create(image_name))
+                is_category,cat,probs = learn.predict(PILImage.create(path / image_name))
                 print(f"This is a: {is_category}.")
-                print(f"Estimated probability : {probs[0]:.4f}")
+                print(f"Estimated categorie : {probs[cat]:.4f}")
 
             case 4:
                 learn.save('conciergerie_learner')
