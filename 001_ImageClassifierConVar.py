@@ -6,8 +6,12 @@ from itertools import islice
 
 import time
 
-def resizeCleanImage(path):
-    resize_images(path/o, max_size=400, dest=path/o, max_workers=0, recurse=True)
+def resizeCleanImage(categories, path):
+    #resize all images
+    for o in categories:
+        resize_images(path/o, max_size=400, dest=path/o, max_workers=0, recurse=True)
+
+
     fns = get_image_files(path)
         #print(fns)
         
@@ -35,10 +39,9 @@ def trainOnDataSet(dls, epoch=3):
     return learn
 
 
-
 def main():
     #create data set
-    
+    categories = 'Chapelle','Couloir des prisonniers','Exterieur', 'Salle des gardes', 'Salle des gens d Armes'
     path = Path('conciergerie')
     isexit = False
 
@@ -57,7 +60,7 @@ def main():
 
             #create data set
             case 1:
-                resizeCleanImage(path)
+                resizeCleanImage(categories, path)
                 print("data set cleaned")
 
             #create data block and train
@@ -78,10 +81,10 @@ def main():
                     batch_tfms=aug_transforms()
                 ).dataloaders(path, bs=32, num_workers=0)
                 
-                #dls.show_batch(max_n=6)
-
-                #train the model on resnet18 with 3 epoch
-                learn = trainOnDataSet(dls, 9)
+                epochs = int(input("enter how many epochs will be used for training : "))
+                
+                #train the model on resnet18 with choosen epoch number
+                learn = trainOnDataSet(dls, epochs)
 
             #try prediction
             case 3:
