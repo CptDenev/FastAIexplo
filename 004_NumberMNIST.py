@@ -57,3 +57,41 @@ print(f"train set : {len(train_subset)} | validation set : {len(val_subset)} | t
 
 
 #define data loaders
+train_loader = DataLoader(train_subset, batch_size=BATCH_SIZE, shuffle=True, num_workers=2)
+val_loader = DataLoader(val_subset, batch_size=BATCH_SIZE, shuffle=False, num_workers=2)
+test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=2)
+
+
+#model architecture
+#input :    28*28 (784px flatten)
+#hidden :   256 -> 128
+#output :   10 (no softmax inside definiton will call on eval)
+#dropout to disable 20% random neuron on each epoch and avoid excessive confidence or false patern detection
+class MNISTNet(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(784, 256),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+
+            nn.Linear(256,128),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+
+            nn.Linear(128,10)
+
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
+
+#create model, load it to device and define criterion, opti and scheduler
+model = MNISTNet().to(device)
+print(f"parameters : {sum(p.numel() for p in model.parameters())}")
+
+criterion = nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=LR, weight_decay=1e-4)
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=3, factor=0.5)
