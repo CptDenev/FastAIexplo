@@ -185,3 +185,4 @@ bird_or_not/
 models/
 conciergerie/
 checkpoints/
+dataset/mnist
