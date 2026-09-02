@@ -184,3 +184,4 @@ cython_debug/
 bird_or_not/
 models/
 conciergerie/
+checkpoints/

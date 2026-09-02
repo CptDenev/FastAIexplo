@@ -28,6 +28,7 @@ EPOCHS = 20
 LR = 1e-3
 PATIENCE = 5
 DATA_DIR = "./dataset/mnist"
+SAVE_DIR = "./checkpoints"
 
 
 #Load MNIST and convert to tensor
@@ -97,7 +98,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=LR, weight_decay=1e-4)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=3, factor=0.5)
 
 
-#training loop
+#training function
 def train_one_epoch(model, loader, criterion, optimizer):
     #put model in train mode
     model.train()
@@ -154,3 +155,54 @@ def evaluate(model, loader, criterion):
     mean_loss = total_loss / len(loader.dataset)
 
     return mean_loss, acc, all_preds, all_labels
+
+
+
+#training loop with validation and early stop
+best_val_loss = float('inf')
+patience_counter = 0
+history = {"train_loss":[],"val_loss":[],"train_acc":[],"val_acc":[]}
+
+print("\n" + "="*60)
+print(f"{'epoch':<6}{'train loss':<12}{'train acc':<12}{'val loss':<12}{'val acc':<12}")
+print("="*60)
+
+for epoch in range(1, EPOCHS + 1):
+    train_loss, train_acc = train_one_epoch(model, train_loader, criterion, optimizer)
+    val_loss, val_acc = evaluate(model, val_loader, criterion)
+    scheduler.step(val_loss)
+
+    history["train_loss"].append(train_loss)
+    history["val_loss"].append(val_loss)
+    history["train_acc"].append(train_acc)
+    history["val_acc"].append(val_acc)
+
+    print(f"{epoch:<6}{train_loss:<12.4f}{train_acc:<12.4f}{val_loss:<12.4f}{val_acc:<12.4f}")
+
+    #early stop test
+    if val_loss < best_val_loss :
+        best_val_loss = val_loss
+        patience_counter = 0
+
+        filename = f"mnist_epoch{epoch}_loss{best_val_loss:.4f}.pth"
+        torch.save(model.state_dict(), os.path.join(SAVE_DIR, filename))
+        print(f"new best val loss = {best_val_loss:.4f}")
+
+    else:
+        patience_counter +=1
+        if patience_counter >= PATIENCE
+            print(f"early stop at epoch {epoch} we've reached max patience : {PATIENCE}")
+            break
+
+print("="*60)
+
+
+#save the model
+
+torch.save({
+    "model_state_dict": model.state_dict(),
+    "best_val_loss": best_val_loss,
+    "epcoh": epoch,
+}, os.path.join( SAVE_DIR,"mnist_final.pth"))
+
+#torch.save(model, os.path.join(SAVE_DIR,"mnist_full_model.pth"))
