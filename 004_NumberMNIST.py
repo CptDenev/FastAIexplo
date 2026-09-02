@@ -123,4 +123,34 @@ def train_one_epoch(model, loader, criterion, optimizer):
         correct += (logits.argmax(dim=1) == labels).sum().item()
         total += images.size(0)
 
-    return total_loss / total, correct / total
+    mean_loss = total_loss / total
+    correct_pred = correct / total
+    return mean_loss , correct_pred
+
+
+#evaluation
+@torch.no_grad()
+def evaluate(model, loader, criterion):
+    #put model in eval mode
+    model.eval()
+    total_loss = 0.0
+    all_preds = []
+    all_labels = []
+
+    for images, labels in loader:
+        images, labels = images.to(device), labels.to(device)
+
+        logits = model(images)
+        loss = criterion(logits, labels)
+
+        total_loss += loss.item() * images.size()
+        #get max logits for tensor, deplace it to RAM to prevent crash from numpy and convert it to np array
+        all_preds.extend(logits.argmax(dim=1).cpu().numpy())
+        #we use extend and not append in order to add element one by one
+        all_labels.extend(labels.cpu().numpy())
+
+    #compar pred with correct labels and mean the result
+    acc = (np.array(all_preds) == np.array(all_labels)).mean()
+    mean_loss = total_loss / len(loader.dataset)
+
+    return mean_loss, acc, all_preds, all_labels
