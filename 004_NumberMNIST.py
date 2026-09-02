@@ -34,8 +34,6 @@ class MNISTNet(nn.Module):
 
 
 
-
-
 #training function
 def train_one_epoch(model, loader, criterion, optimizer, device):
     #put model in train mode
@@ -67,7 +65,7 @@ def train_one_epoch(model, loader, criterion, optimizer, device):
     return mean_loss , correct_pred
 
 
-#evaluation
+#evaluation function
 @torch.no_grad()
 def evaluate(model, loader, criterion, device):
     #put model in eval mode
@@ -109,8 +107,6 @@ def main():
         device = torch.device("mps")
     else:
         device = torch.device("cpu")
-
-
     print(f"device on which we're running: {device}")
 
     BATCH_SIZE = 128
@@ -120,7 +116,6 @@ def main():
     DATA_DIR = "./dataset/mnist"
     SAVE_DIR = "./checkpoints"
     os.makedirs(SAVE_DIR, exist_ok=True)
-
 
     #Load MNIST and convert to tensor
     transform = transforms.Compose([
@@ -148,13 +143,10 @@ def main():
     print(f"train set : {len(train_subset)} | validation set : {len(val_subset)} | test set {len(test_dataset)}")
 
 
-
     #define data loaders
     train_loader = DataLoader(train_subset, batch_size=BATCH_SIZE, shuffle=True, num_workers=2)
     val_loader = DataLoader(val_subset, batch_size=BATCH_SIZE, shuffle=False, num_workers=2)
     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=2)
-
-
 
 
     #create model, load it to device and define criterion, opti and scheduler
@@ -164,59 +156,101 @@ def main():
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=LR, weight_decay=1e-4)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=3, factor=0.5)
+ 
 
+    while True:
 
+        print("1: train model on MNSIT")
+        print("2: eval report on test set")
+        print("any other value : quit")
+        choice = int(input("choose selection : "))
 
-
-    #training loop with validation and early stop
-    best_val_loss = float('inf')
-    patience_counter = 0
-    history = {"train_loss":[],"val_loss":[],"train_acc":[],"val_acc":[]}
-
-    print("\n" + "="*60)
-    print(f"{'epoch':<6}{'train loss':<12}{'train acc':<12}{'val loss':<12}{'val acc':<12}")
-    print("="*60)
-
-    for epoch in range(1, EPOCHS + 1):
-        train_loss, train_acc = train_one_epoch(model, train_loader, criterion, optimizer, device)
-        val_loss, val_acc, _, _ = evaluate(model, val_loader, criterion, device)
-        scheduler.step(val_loss)
-
-        history["train_loss"].append(train_loss)
-        history["val_loss"].append(val_loss)
-        history["train_acc"].append(train_acc)
-        history["val_acc"].append(val_acc)
-
-        print(f"{epoch:<6}{train_loss:<12.4f}{train_acc:<12.4f}{val_loss:<12.4f}{val_acc:<12.4f}")
-
-        #early stop test
-        if val_loss < best_val_loss :
-            best_val_loss = val_loss
+        if(choice == 1):
+            #training loop with validation and early stop
+            best_val_loss = float('inf')
             patience_counter = 0
+            history = {"train_loss":[],"val_loss":[],"train_acc":[],"val_acc":[]}
+        
+            print("\n" + "="*60)
+            print(f"{'epoch':<6}{'train loss':<12}{'train acc':<12}{'val loss':<12}{'val acc':<12}")
+            print("="*60)
 
-            filename = f"mnist_epoch{epoch}_loss{best_val_loss:.4f}.pth"
-            torch.save(model.state_dict(), os.path.join(SAVE_DIR, filename))
-            print(f"new best val loss = {best_val_loss:.4f}")
+            for epoch in range(1, EPOCHS + 1):
+                train_loss, train_acc = train_one_epoch(model, train_loader, criterion, optimizer, device)
+                val_loss, val_acc, _, _ = evaluate(model, val_loader, criterion, device)
+                scheduler.step(val_loss)
 
-        else:
-            patience_counter +=1
-            if patience_counter >= PATIENCE:
-                print(f"early stop at epoch {epoch} we've reached max patience : {PATIENCE}")
-                break
+                history["train_loss"].append(train_loss)
+                history["val_loss"].append(val_loss)
+                history["train_acc"].append(train_acc)
+                history["val_acc"].append(val_acc)
 
-    print("="*60)
+                print(f"{epoch:<6}{train_loss:<12.4f}{train_acc:<12.4f}{val_loss:<12.4f}{val_acc:<12.4f}")
+
+                #early stop test
+                if val_loss < best_val_loss :
+                    best_val_loss = val_loss
+                    patience_counter = 0
+
+                    filename = f"mnist_epoch{epoch}_loss{best_val_loss:.4f}.pth"
+                    torch.save(model.state_dict(), os.path.join(SAVE_DIR, filename))
+                    print(f"new best val loss = {best_val_loss:.4f}")
+
+                else:
+                    patience_counter +=1
+                    if patience_counter >= PATIENCE:
+                        print(f"early stop at epoch {epoch} we've reached max patience : {PATIENCE}")
+                        break
+
+            print("="*60)
 
 
-    #save the model
+            #save the model post training
+            torch.save({
+                "model_state_dict": model.state_dict(),
+                "best_val_loss": best_val_loss,
+                "epoch": epoch,
+            }, os.path.join( SAVE_DIR,"mnist_final.pth"))
 
-    torch.save({
-        "model_state_dict": model.state_dict(),
-        "best_val_loss": best_val_loss,
-        "epcoh": epoch,
-    }, os.path.join( SAVE_DIR,"mnist_final.pth"))
+            #torch.save(model, os.path.join(SAVE_DIR,"mnist_full_model.pth"))
 
-    #torch.save(model, os.path.join(SAVE_DIR,"mnist_full_model.pth"))
 
+        elif choice == 2 :
+            #evaluation on test set
+            print("\n" + "="*60)
+            print("evaluation on test set")
+            print("="*60)
+
+            #load model
+            checkpoint = torch.load(
+                os.path.join(SAVE_DIR, "mnist_final.pth"), 
+                map_location=device,
+                weights_only=True)
+            model.load_state_dict(checkpoint["model_state_dict"])
+
+            test_loss, test_acc, all_preds, all_labels = evaluate(model, test_loader, criterion, device)
+            print(f"test loss: {test_loss:.4f}")
+            print(f"test accuracy: {test_acc:.4f} ({int(test_acc*10000)}/{len(all_labels)})")
+
+            print("classification report :")
+            print(classification_report(all_labels, all_preds, target_names=[str(i) for i in range(10)]))
+
+            print("confusion matrix :")
+            print(confusion_matrix(all_labels, all_preds))
+
+            print("prediction example based on softmax :")
+            model.eval()
+            for i, (images, labels) in enumerate(test_loader):
+                if i >= 1:
+                    break
+                logits = model(images.to(device))
+                probs = F.softmax(logits, dim=1)
+                for j in range(5):
+                    print(f"true : {labels[j].item()} | prediction : {probs[j].argmax().item()} | "
+                        f"confidance : {probs[j].max():.4f} | top 3 proba : {probs[j].topk(3)}")
+
+        else :
+            break
 
 
 if __name__ == '__main__':
