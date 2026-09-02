@@ -95,3 +95,32 @@ print(f"parameters : {sum(p.numel() for p in model.parameters())}")
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=LR, weight_decay=1e-4)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=3, factor=0.5)
+
+
+#training loop
+def train_one_epoch(model, loader, criterion, optimizer):
+    #put model in train mode
+    model.train()
+    total_loss = 0.0
+    correct = 0
+    total = 0
+
+    for images, labels in loader:
+        #load images and labels to device
+        images, labels = images.to(device), labels.to(device)
+
+        #forward pass
+        logits = model(images)
+        loss = criterion(logits, labels)
+
+        #backward pass
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        #compute stats
+        total_loss += loss.item() * images.size(0)
+        correct += (logits.argmax(dim=1) == labels).sum().item()
+        total += images.size(0)
+
+    return total_loss / total, correct / total
