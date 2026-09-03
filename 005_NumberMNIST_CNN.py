@@ -7,7 +7,7 @@ from sklearn.metrics import classification_report, confusion_matrix
 import numpy as np
 import os
 
-#model architecture
+#model architecture CNN
 #input :    conv1 1 greyscale * (32 * (3*3) filters) + 32 outputs
 #hidden :   conv2 (32 in, 64 filters, 3*3 mask), fc1 (64 filters result, 7*7 image size after two maxpool)
 #output :   fc2 128 inputs, 10 ouputs (no softmax inside definiton will call on eval)
