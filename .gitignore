@@ -186,3 +186,4 @@ models/
 conciergerie/
 checkpoints/
 dataset/mnist
+test_digits/
