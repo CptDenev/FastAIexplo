@@ -15,9 +15,8 @@
 | Project | Architecture | Dataset | Size | Status |
 |---------|-------------|---------|------|--------|
 | MNIST Digit CNN| 2×(Conv-Pool) CNN + 2×FC | MNIST (0-9) | 1.6 MB | ✅ Deployed on [HF Space](https://huggingface.co/spaces/CptDenev/MNIST_Digit_CNN) |
-| MNIST MLP | Feedforward (3-4 hidden layers) | MNIST (0-9) | 920 kB | ✅ |
+| MLP | Feedforward (3-4 hidden layers) | MNIST (0-9) | 920 kB | ✅ |
 | ResNet18 Fine-tune| ResNet18 pretrained (fastai) | — | 45 Mo | ✅ |
-| MLP — *(upcoming)* | 3-4 layer Feedforward | — | — | 🚧 |
 | RNN / LSTM — *(upcoming)* | Sequential | — | — | 📋 |
 | Attention / small Transformer — *(upcoming)* | Self-attention | — | — | 📋 |
 
