@@ -6,7 +6,7 @@
 ## Philosophy
 
 - **Local first** — everything trains and runs on personal hardware (CPU or consumer GPU)
-- **Small by design** — models < 50 MB, inference < 100 ms, deployable on any device
+- **Small by design** — models < 150 MB, inference < 100 ms, deployable on any device
 - **No LLMs for bounded tasks** — a 1.6 MB CNN that reads a digit doesn't need an A100 or prompt engineering
 - **Reproducible** — Dockerfile + seed + config in every project, `docker run` and you're good 🚧
 
