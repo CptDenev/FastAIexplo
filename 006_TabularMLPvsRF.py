@@ -72,6 +72,37 @@ def main():
     device = get_device()
     print(f"device : {device}")
 
+    while True :
+        print("\n" + "─"*40)
+        print("  MACHINE FAILURE PREDICTION")
+        print("─"*40)
+        print("1: train MLP (PyTorch)")
+        print("2: train Random Forest (sklearn)")
+        print("3: evaluate MLP on test set")
+        print("4: evaluate RF on test set")
+        print("5: compare MLP vs RF")
+        print("0: quit")
+
+        choice = int(input("choose : "))
+
+        if choice == 1:
+            pass
+
+        elif choice == 2:
+            pass
+
+        elif choice == 3:
+            pass
+
+        elif choice == 4:
+            pass
+
+        elif choice == 5:
+            pass
+
+        else:
+            break
+
 
 if __name__ == '__main__':
     main()
