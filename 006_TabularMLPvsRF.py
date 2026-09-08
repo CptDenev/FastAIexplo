@@ -11,14 +11,67 @@ import panda as pd
 import joblib
 import os
 
-#get CSV data set
-#clean data set
-#split data set in train, cross, test
-# 
-#define archi MLP pytorch
-#define train ad save
-#
-#define archi RF sickitlearn
-#define train and save
-#
-#menu train, compare
+
+# --Config--
+SEED = 33
+DATA_PATH = ""
+SAVE_DIR = ""
+os.makedirs(SAVE_DIR, exist_ok=True)
+
+FEATURES=[
+    'Air temperature [K]', 'Process temperature [K]',
+    'Rotational speed [rpm]', 'Torque [Nm]', 'Tool wear [min]'
+]
+
+TARGET = 'Machine failure'
+
+MLP_HIDDEN = [128,64]
+MLP_EPOCHS = 200
+MLP_LR = 1e-3
+MLP_BATCH = 64
+MLP_PATIENCE = 10
+
+
+# --Device detection--
+def get_device():
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    elif torch.backends.mps.is_available():
+        return torch.device("mps")
+    else :
+        return torch.device("cpu")
+
+
+# --Data load and cleab--
+def load_data(PATH=DATA_PATH):
+    pass
+
+def clean_data(df):
+    pass
+
+def prepare_data(df):
+    pass
+
+def split_data(df):
+    pass
+
+
+# --MLP PyTorch--
+
+# --RF Sickit Learn--
+
+# --Compare MLP vs RF--
+
+
+
+
+# --Main function call and menu--
+def main():
+    np.random.seed(SEED)
+    torch.manual_seed(SEED)
+    device = get_device()
+    print(f"device : {device}")
+
+
+if __name__ == '__main__':
+    main()
