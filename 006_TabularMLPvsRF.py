@@ -65,10 +65,24 @@ def clean_data(df):
     
 
 def prepare_tensors(df):
-    pass
+    features_cols = FEATURES + [c for c in df.columns if c.startswith("Type_")]
+    X = df[features_cols].values.astype(np.float32)
+    y = df[TARGET].values.astype(np.int64)
+    return X, y
 
-def split_data(df):
-    pass
+def split_data(X, y, train_frac=0.7, val_frac=0.15, seed=SEED):
+    #we keep a split at 70 training, 15 cross, 15 test
+    X_train, X_temp, y_train, y_temp = train_test_split(
+        X, y, train_size=train_frac, random_state=seed, stratify=y
+    )
+
+    rel_val = val_frac / (val_frac + 0.15)
+
+    X_val, X_test, y_val, y_test = train_test_split(
+        X_temp, y_temp, test_size=rel_val, random_state=seed, stratify=y_temp
+    )
+
+    return X_train, X_val, X_test, y_train, y_val, y_test
 
 
 # --MLP PyTorch--
