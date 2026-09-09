@@ -130,7 +130,31 @@ class TabularMLP(nn.Module):
 
 
 def mlp_train_one_epoch(model, loader, criterion, optimizer, device):
-    pass
+    #put model in train mode
+    model.train()
+    total_loss, correct, total = 0.0, 0, 0
+
+    for X_batch, y_batch in loader :
+        X_batch, y_batch = X_batch.to(device), y_batch.to(device)
+
+        #forward pass
+        logits = model(X_batch)
+        #BCE with logistics loss
+        loss = criterion(logits, y_batch)
+
+        #reinit grad, we don't want grad accumulation here
+        optimizer.zero_grad()
+        #compute dl/dw
+        loss.backward()
+        #w = w - lr * grad
+        optimizer.step()
+
+        total_loss += loss.item() * X_batch.size(0)
+        preds = (torch.sigmoid(logits) > 0.5).float()
+        correct += (preds == y_batch).sum().item()
+        total += X_batch.size(0)
+
+    return total_loss/total , correct/total
 
 
 @torch.no.grad()
