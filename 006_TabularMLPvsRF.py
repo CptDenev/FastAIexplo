@@ -159,10 +159,53 @@ def mlp_train_one_epoch(model, loader, criterion, optimizer, device):
 
 @torch.no.grad()
 def mlp_evaluate(model, loader, criterion, device):
-    pass
+    #put model in eval mode
+    model.eval()
+    total_loss = 0.0
+    all_preds, all_labels = [], []
+
+    for X_batch, y_batch in loader:
+        X_batch, y_batch = X_batch.to(device), y_batch.to(device)
+
+        logits = model(X_batch)
+        loss = criterion(logits, y_batch)
+        total_loss += loss.item() * X_batch.size(0)
+
+        preds = (torch.sigmoid(logits)>0.5).float()
+        #move tensors to CPU, convert to numpy and add only element to tab
+        all_preds.extend(preds.cpu().numpy())
+        all_labels.extend(y_batch.cpu().numpy())
+
+    #compute matching preds with matching labels and mean it
+    acc = (np.array(all_preds) == np.array(all_labels)).mean()
+    return total_loss/len(loader.dataset), acc, all_preds, all_labels
 
 def mlp_train(X_train, y_train, X_val, y_val, device):
-    pass
+    torch.manual_seed(SEED)
+
+    #tensors and data loader
+    train_ds = TensorDataset(
+        torch.Tensor(X_train, dtype=torch.float32),
+        torch.Tensor(y_train, dtype=torch.float32)
+    )
+    val_ds = TensorDataset(
+        torch.Tensor(X_val, dtype=torch.float32),
+        torch.Tensor(y_val, dtype=torch.float32)
+    )
+
+    train_loader = DataLoader(train_ds, batch_size=MLP_BATCH, shuffle=True)
+    val_loader = DataLoader(val_ds, batch_size=MLP_BATCH, shuffle=False)
+
+    #model
+    input_dim = X_train.shape[1]
+    model = TabularMLP(input_dim, MLP_HIDDEN).to(device)
+    n_params = sum(p.numel() for p in model.parameters())
+    print(f"MLP parameters : {n_params}")
+
+    #compute positive weight due to huge class imbalance in data
+    pos_count =
+    neg_count =
+    pos_weight =
 
 # --------RF Sickit Learn--------
 
