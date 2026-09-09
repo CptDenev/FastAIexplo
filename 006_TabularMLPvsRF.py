@@ -183,7 +183,7 @@ def mlp_evaluate(model, loader, criterion, device):
 def mlp_train(X_train, y_train, X_val, y_val, device):
     torch.manual_seed(SEED)
 
-    #tensors and data loader
+    #--tensors and data loader--
     train_ds = TensorDataset(
         torch.Tensor(X_train, dtype=torch.float32),
         torch.Tensor(y_train, dtype=torch.float32)
@@ -196,16 +196,26 @@ def mlp_train(X_train, y_train, X_val, y_val, device):
     train_loader = DataLoader(train_ds, batch_size=MLP_BATCH, shuffle=True)
     val_loader = DataLoader(val_ds, batch_size=MLP_BATCH, shuffle=False)
 
-    #model
+    #--model--
     input_dim = X_train.shape[1]
     model = TabularMLP(input_dim, MLP_HIDDEN).to(device)
     n_params = sum(p.numel() for p in model.parameters())
     print(f"MLP parameters : {n_params}")
 
-    #compute positive weight due to huge class imbalance in data
-    pos_count =
-    neg_count =
-    pos_weight =
+    #compute pos weight due to huge class imbalance in data
+    pos_count = y_train.sum()
+    neg_count = len(y_train) - pos_count
+    pos_weight = torch.Tensor([neg_count / pos_count]).to(device)
+
+    criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+    print(f"pos weight :{pos_weight:.1f}")
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=MLP_LR, weight_decay=1e-4)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=3, factor=0.5)
+
+    #--training loop--
+    
+
 
 # --------RF Sickit Learn--------
 
