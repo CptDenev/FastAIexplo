@@ -43,13 +43,28 @@ def get_device():
 
 
 # --Data load and cleab--
-def load_data(PATH=DATA_PATH):
-    pass
+def load_data(path=DATA_PATH):
+    df = pd.read_csv(path)
+    print(f"loaded : {len(df)} rows, {len(df.columns)} cols")
 
 def clean_data(df):
-    pass
+    #search NaN numerical and replace by median
+    for col in df.select_dtypes(include=[np.number]).columns:
+        if df[col].isna().any() :
+            df[col].fillna(df[col].median, inplace=True)
 
-def prepare_data(df):
+    #search for NaN string and repalce by most frequent
+    for col in df.select_dtypes(include=['object']).columns:
+        if df[col].isna().any():
+            df[col].fillna(df[col].mode()[0], inplace=True)
+
+    #create boolean value for exotic type ie. ["a","b","c"] 
+    df = pd.get_dummies(df, columns=["Type"])
+    print(f"cleaned : {df.shape[1]} cols")
+    return df
+    
+
+def prepare_tensors(df):
     pass
 
 def split_data(df):
