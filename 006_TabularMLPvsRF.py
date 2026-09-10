@@ -314,7 +314,6 @@ def rf_train(X_train, y_train, X_val, y_val):
     return rf_final
 
 
-
 def rf_evaluate(model, X_test, y_test):
     pass
 
@@ -330,6 +329,12 @@ def main():
     torch.manual_seed(SEED)
     device = get_device()
     print(f"device : {device}")
+
+    #load data from CSV and create test, val and test sets
+    df = load_data()
+    df = clean_data()
+    X, y, feature_cols = prepare_data(df)
+    X_train, X_val, X_test, y_train, y_val, y_test = split_data(X, y)
 
     while True :
         print("\n" + "─"*40)
