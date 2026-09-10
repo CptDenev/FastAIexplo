@@ -116,7 +116,7 @@ class TabularMLP(nn.Module):
         for h in hidden_layers :
             layers += [
                 nn.Linear(prev, h),
-                nn. Relu(),
+                nn.ReLU(),
                 nn.Dropout(dropout)
                 ]
             prev = h
@@ -224,7 +224,7 @@ def mlp_train(X_train, y_train, X_val, y_val, device):
     print("="*60)
 
     for epoch in range(1, MLP_EPOCHS +1):
-        
+
 
 
     #--save model--
