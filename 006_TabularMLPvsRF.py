@@ -224,8 +224,30 @@ def mlp_train(X_train, y_train, X_val, y_val, device):
     print("="*60)
 
     for epoch in range(1, MLP_EPOCHS +1):
+        #train and evaluate for one epoch
+        tr_loss, tr_acc = mlp_train_one_epoch(model, train_loader, criterion, optimizer, device)
+        val_loss, val_acc, _, _ = mlp_evaluate(model, val_loader, criterion, device)
+        scheduler.step(val_loss)
 
+        history["train_loss"].append(tr_loss)
+        history["train_acc"].append(tr_acc)
+        history["val_loss"].append(val_loss)
+        history["val_acc"].append(val_acc)
 
+        print(f"{'epoch':<6}{'train loss':<12.4f}{'train acc':<12.4f}{'val loss':<12.4f}{'val acc':<12.4f}")
+
+        #check if validation loss is better than previous one and save checkpoint as best
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            patience_counter = 0
+            torch.save(model.state_dict(), os.path.join(SAVE_DIR, "mlp_machfail_best.pth"))
+
+        #else increase patience counter until we reach max value
+        else:
+            patience_counter += 1
+            if patience_counter >= MLP_PATIENCE:
+                print(f"early stop at epoch: {epoch} patience={MLP_PATIENCE}")
+                break
 
     #--save model--
     torch.save({
@@ -242,6 +264,60 @@ def mlp_train(X_train, y_train, X_val, y_val, device):
 
 
 # --------RF Sickit Learn--------
+
+def rf_train(X_train, y_train, X_val, y_val):
+    """
+        Sickit RF
+        First run with 4 estimators 
+        then we keep the best for a final run
+    """
+    print("\n" + "="*60)
+    print("Random Forest - progressive n-estimators")
+    print("="*60)
+
+    best_f1, best_n = 0, 100
+    #test multiple n estimators
+    for n_est in [50, 100, 200, 400]:
+        rf = RandomForestClassifier(
+             n_estimators=n_est,
+             max_depth=None,
+             min_samples_split=5,
+             class_weight='balanced',
+             random_state=SEED,
+             n_jobs=1
+        )
+
+        rf.fit(X_train, y_train)
+
+        val_pred = rf.predict(X_val)
+        #we use f1 score as our y to predict are hugely asymetrics (way more running OK than running error)
+        val_f1 = f1_score(y_val, val_pred)
+        print(f"n_est={n_est:<5} | val F1={val_f1:.4f}")
+
+        if val_f1 > best_f1:
+            best_f1, best_n = val_f1, n_est
+
+    #run with best estimator
+    print(f"\n best n_estimator : {best_n}, val F1 : {best_f1:4f}")
+    rf_final = RandomForestClassifier(
+        n_estimators=best_n,
+        max_depth=None,
+        min_samples_split=5,
+        class_weight='balanced',
+        random_state=SEED,
+        n_jobs=1
+    )
+    rf_final.fit(X_train, y_train)
+
+    joblib.dump(rf_final, os.path.join(SAVE_DIR, "rf_machfail_best.joblib"))
+    print(f"saved {SAVE_DIR}/rf_machfail_best.joblib")
+    return rf_final
+
+
+
+def rf_evaluate(model, X_test, y_test):
+    pass
+
 
 # --------Compare MLP vs RF--------
 
