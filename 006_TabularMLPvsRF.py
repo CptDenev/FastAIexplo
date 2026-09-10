@@ -211,9 +211,33 @@ def mlp_train(X_train, y_train, X_val, y_val, device):
     print(f"pos weight :{pos_weight:.1f}")
 
     optimizer = torch.optim.Adam(model.parameters(), lr=MLP_LR, weight_decay=1e-4)
+    #wait 3 non progression for loss and then apply a 0.5 factor to it
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=3, factor=0.5)
 
     #--training loop--
+    best_val_loss = float('inf')
+    patience_counter = 0
+    history = {"train_loss": [], "val_loss": [], "train_acc":[], "val_acc":[]}
+
+    print("\n" + "="*60)
+    print(f"{'epoch':<6}{'train loss':<12}{'train acc':<12}{'val loss':<12}{'val acc':<12}")
+    print("="*60)
+
+    for epoch in range(1, MLP_EPOCHS +1):
+        
+
+
+    #--save model--
+    torch.save({
+        "model_state_dict": model.state_dict(),
+        "input_dim": input_dim,
+        "hidden_layers": MLP_HIDDEN,
+        "best_val_loss": best_val_loss,
+        "epoch": epoch,
+        "feature_names": FEATURES + [f"Type_{t}" for t in ["H","L","M"]],
+    }, os.path.join(SAVE_DIR, "mlp_machfail_final.pth"))
+
+    return model, history
     
 
 
