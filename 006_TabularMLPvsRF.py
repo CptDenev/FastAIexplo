@@ -315,12 +315,35 @@ def rf_train(X_train, y_train, X_val, y_val):
 
 
 def rf_evaluate(model, X_test, y_test):
-    pass
+    preds = model(X_test)
+    print(f"\nRF F1 : "{f1_score(y_test, preds)})
+    print(classification_report(y_test, preds):.4f)
+    print("confusion matrix:")
+    print(confusion_matrix(y_test, preds))
+
+    imp = pd.Series(model.feature_importances_,
+                    index=model.feature_names_in).sort_values(ascending=False)
+    print("\nfeature importance top 5 :")
+    for name, val in imp.head(5).items():
+        print(f"  {name:<30} {val:.4f}")
+    return preds
+    
 
 
 # --------Compare MLP vs RF--------
 
+def compare_models(X_test, y_test, device):
 
+    #load MLP
+    #load RF
+
+    #display analysis F1 score, accuracy, precision, recall
+
+    #display disagree
+
+    #display feature importance for RF
+
+    pass
 
 
 # --------Main function call and menu--------
@@ -350,16 +373,20 @@ def main():
         choice = int(input("choose : "))
 
         if choice == 1:
-            pass
+            mlp_train(X_train, y_train, X_val, y_val, device)
 
         elif choice == 2:
-            pass
+            X_train_df = pd.DataFrame(X_train, columns=feature_cols)
+            X_val_df = pd.DataFrame(X_val, columns=feature_cols)
+            rf_train(X_train_df, y_train, X_val_df, y_val)
 
         elif choice == 3:
             pass
 
         elif choice == 4:
-            pass
+            rf = joblib.load(os.path.join(SAVE_DIR, "rf_machfail_best.joblib"))
+            X_test_df = pd.DataFrame(X_test, columns=feature_cols)
+            rf_evaluate(rf, X_test_df, y_test)
 
         elif choice == 5:
             pass
