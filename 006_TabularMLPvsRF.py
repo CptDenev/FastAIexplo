@@ -335,7 +335,14 @@ def rf_evaluate(model, X_test, y_test):
 def compare_models(X_test, y_test, device):
 
     #load MLP
+    ckpt = torch.load(os.path.join(SAVE_DIR, "mlp_machfail_final.pth"))
+    mlp = TabularMLP(ckpt["input_dim"], ckpt["hidden_layers"]).to(device)
+    mlp.load_state_dict(ckpt["model_state_dict"])
+    mlp.eval()
+
     #load RF
+    rf = joblib.load(os.path.join(SAVE_DIR, "rf_machfail_best.joblib"))
+    rf_preds = rf.predict(X_test)
 
     #display analysis F1 score, accuracy, precision, recall
 
