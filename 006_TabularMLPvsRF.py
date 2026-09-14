@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import joblib
 import os
+import math
 
 
 # --Config--
@@ -186,12 +187,12 @@ def mlp_train(X_train, y_train, X_val, y_val, device):
 
     #--tensors and data loader--
     train_ds = TensorDataset(
-        torch.Tensor(X_train, dtype=torch.float32),
-        torch.Tensor(y_train, dtype=torch.float32)
+        torch.tensor(X_train, dtype=torch.float32),
+        torch.tensor(y_train, dtype=torch.float32)
     )
     val_ds = TensorDataset(
-        torch.Tensor(X_val, dtype=torch.float32),
-        torch.Tensor(y_val, dtype=torch.float32)
+        torch.tensor(X_val, dtype=torch.float32),
+        torch.tensor(y_val, dtype=torch.float32)
     )
 
     train_loader = DataLoader(train_ds, batch_size=MLP_BATCH, shuffle=True)
@@ -206,7 +207,7 @@ def mlp_train(X_train, y_train, X_val, y_val, device):
     #compute pos weight due to huge class imbalance in data
     pos_count = y_train.sum()
     neg_count = len(y_train) - pos_count
-    pos_weight = torch.Tensor([neg_count / pos_count]).to(device)
+    pos_weight = torch.Tensor([math.sqrt(neg_count / pos_count)]).to(device)
 
     criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
     print(f"pos weight :{pos_weight.item():.1f}")
@@ -235,7 +236,7 @@ def mlp_train(X_train, y_train, X_val, y_val, device):
         history["val_loss"].append(val_loss)
         history["val_acc"].append(val_acc)
 
-        print(f"{'epoch':<6}{'train loss':<12.4f}{'train acc':<12.4f}{'val loss':<12.4f}{'val acc':<12.4f}")
+        print(f"{epoch:<6}{tr_loss:<12.4f}{tr_acc:<12.4f}{val_loss:<12.4f}{val_acc:<12.4f}")
 
         #check if validation loss is better than previous one and save checkpoint as best
         if val_loss < best_val_loss:
@@ -316,8 +317,8 @@ def rf_train(X_train, y_train, X_val, y_val):
 
 
 def rf_evaluate(model, X_test, y_test):
-    preds = model(X_test)
-    print(f"\nRF F1 : {f1_score(y_test, preds)}:.4f")
+    preds = model.predict(X_test)
+    print(f"\nRF F1 : {f1_score(y_test, preds):.4f}")
     print(classification_report(y_test, preds, target_names=["OK", "FAILURE"]))
     print("confusion matrix:")
     print(confusion_matrix(y_test, preds))
@@ -437,7 +438,7 @@ def main():
                 torch.tensor(y_test, dtype=torch.float32))
             test_loader = DataLoader(val_ds, batch_size=MLP_BATCH, shuffle=False)
 
-            pos_weight = torch.tensor([(len(y_test)-y_test.sum()) / max(y_test.sum(),1)]).to(device)
+            pos_weight = torch.tensor([math.sqrt((len(y_test)-y_test.sum()) / max(y_test.sum(),1))]).to(device)
             criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
             _, acc, preds, labels = mlp_evaluate(mlp, test_loader, criterion, device)
 
