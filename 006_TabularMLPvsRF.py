@@ -7,15 +7,15 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, confusion_matrix, f1_score
 import numpy as np
-import panda as pd
+import pandas as pd
 import joblib
 import os
 
 
 # --Config--
 SEED = 33
-DATA_PATH = ""
-SAVE_DIR = ""
+DATA_PATH = "./dataset/ai4i2020.csv"
+SAVE_DIR = "./checkpoints"
 os.makedirs(SAVE_DIR, exist_ok=True)
 
 FEATURES=[
@@ -46,12 +46,13 @@ def get_device():
 def load_data(path=DATA_PATH):
     df = pd.read_csv(path)
     print(f"loaded : {len(df)} rows, {len(df.columns)} cols")
+    return df
 
 def clean_data(df):
     #search NaN numerical and replace by median
     for col in df.select_dtypes(include=[np.number]).columns:
         if df[col].isna().any() :
-            df[col].fillna(df[col].median, inplace=True)
+            df[col].fillna(df[col].median(), inplace=True)
 
     #search for NaN string and repalce by most frequent
     for col in df.select_dtypes(include=['object']).columns:
@@ -157,7 +158,7 @@ def mlp_train_one_epoch(model, loader, criterion, optimizer, device):
     return total_loss/total , correct/total
 
 
-@torch.no.grad()
+@torch.no_grad()
 def mlp_evaluate(model, loader, criterion, device):
     #put model in eval mode
     model.eval()
@@ -208,7 +209,7 @@ def mlp_train(X_train, y_train, X_val, y_val, device):
     pos_weight = torch.Tensor([neg_count / pos_count]).to(device)
 
     criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
-    print(f"pos weight :{pos_weight:.1f}")
+    print(f"pos weight :{pos_weight.item():.1f}")
 
     optimizer = torch.optim.Adam(model.parameters(), lr=MLP_LR, weight_decay=1e-4)
     #wait 3 non progression for loss and then apply a 0.5 factor to it
@@ -298,7 +299,7 @@ def rf_train(X_train, y_train, X_val, y_val):
             best_f1, best_n = val_f1, n_est
 
     #run with best estimator
-    print(f"\n best n_estimator : {best_n}, val F1 : {best_f1:4f}")
+    print(f"\n best n_estimator : {best_n}, val F1 : {best_f1:.4f}")
     rf_final = RandomForestClassifier(
         n_estimators=best_n,
         max_depth=None,
@@ -316,13 +317,13 @@ def rf_train(X_train, y_train, X_val, y_val):
 
 def rf_evaluate(model, X_test, y_test):
     preds = model(X_test)
-    print(f"\nRF F1 : "{f1_score(y_test, preds)})
-    print(classification_report(y_test, preds):.4f)
+    print(f"\nRF F1 : {f1_score(y_test, preds)}:.4f")
+    print(classification_report(y_test, preds, target_names=["OK", "FAILURE"]))
     print("confusion matrix:")
     print(confusion_matrix(y_test, preds))
 
     imp = pd.Series(model.feature_importances_,
-                    index=model.feature_names_in).sort_values(ascending=False)
+                    index=model.feature_names_in_).sort_values(ascending=False)
     print("\nfeature importance top 5 :")
     for name, val in imp.head(5).items():
         print(f"  {name:<30} {val:.4f}")
@@ -346,7 +347,7 @@ def compare_models(X_test, y_test, device):
 
     X_test_t = torch.tensor(X_test, dtype=torch.float32).to(device)
     with torch.no_grad():
-        mlp_probs = torch.sigmoid(mlp(X_test_t)).cpu().numpy
+        mlp_probs = torch.sigmoid(mlp(X_test_t)).cpu().numpy()
     mlp_preds =(mlp_probs > 0.5).astype(int)
 
     #load and compute preds for RF
@@ -359,7 +360,9 @@ def compare_models(X_test, y_test, device):
     #display analysis F1 score, accuracy, precision, recall
     print(f"\n{'Metric':<20}{'MLP':<15}{'RF':<15}")
     print("-"*50)
-    print(f"{'F1 Score':<20}{f1_score(y_test,mlp_preds):<15.4f}{f1_score(y_test, rf_preds):<15.4f}")
+    mlp_f1 = f1_score(y_test,mlp_preds)
+    rf_f1 = f1_score(y_test, rf_preds)
+    print(f"{'F1 Score':<20}{mlp_f1:<15.4f}{rf_f1:<15.4f}")
     print(f"{'Accuracy':<20}{(mlp_preds == y_test).mean():15.4f}{(rf_preds == y_test).mean():15.4f}")
 
     mlp_report = classification_report(y_test, mlp_preds, target_names=["OK", "FAILURE"], output_dict=True)
@@ -370,7 +373,7 @@ def compare_models(X_test, y_test, device):
     for cls in ["OK", "FAILURE"]:
         print(f"{cls+' precision':<20}{mlp_report[cls]['precision']:<15.4f}{rf_report[cls]['precision']:<15.4f}")
         print(f"{cls+' recal':<20}{mlp_report[cls]['recall']:<15.4f}{rf_report[cls]['recall']:<15.4f}")
-        print(f"{cls+' F1'<20}{mlp_report[cls]['f1-score']:<15.4f}{rf_report[cls]['f1-score']:<15.4f}")
+        print(f"{cls+' F1':<20}{mlp_report[cls]['f1-score']:<15.4f}{rf_report[cls]['f1-score']:<15.4f}")
 
     #display disagree
     disagree = (mlp_preds != rf_preds)
@@ -397,7 +400,7 @@ def main():
 
     #load data from CSV and create test, val and test sets
     df = load_data()
-    df = clean_data()
+    df = clean_data(df)
     X, y, feature_cols = prepare_data(df)
     X_train, X_val, X_test, y_train, y_val, y_test = split_data(X, y)
 
@@ -423,7 +426,7 @@ def main():
             rf_train(X_train_df, y_train, X_val_df, y_val)
 
         elif choice == 3:
-            ckpt = torch.load(os.path.join(SAVE_DIR, "mlp_machfail_final.pth")
+            ckpt = torch.load(os.path.join(SAVE_DIR, "mlp_machfail_final.pth"),
                               map_location=device, weights_only=True)
 
             mlp = TabularMLP(ckpt["input_dim"], ckpt["hidden_layers"]).to(device)
