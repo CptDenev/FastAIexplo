@@ -333,24 +333,59 @@ def rf_evaluate(model, X_test, y_test):
 # --------Compare MLP vs RF--------
 
 def compare_models(X_test, y_test, device):
+    print("\n" + "="*60)
+    print(" COMPARISON : MLP VS RF on test set")
+    print("="*60)
 
-    #load MLP
+
+    #load anc compute preds for MLP
     ckpt = torch.load(os.path.join(SAVE_DIR, "mlp_machfail_final.pth"))
     mlp = TabularMLP(ckpt["input_dim"], ckpt["hidden_layers"]).to(device)
     mlp.load_state_dict(ckpt["model_state_dict"])
     mlp.eval()
 
-    #load RF
+    X_test_t = torch.tensor(X_test, dtype=torch.float32).to(device)
+    with torch.no_grad():
+        mlp_probs = torch.sigmoid(mlp(X_test_t)).cpu().numpy
+    mlp_preds =(mlp_probs > 0.5).astype(int)
+
+    #load and compute preds for RF
     rf = joblib.load(os.path.join(SAVE_DIR, "rf_machfail_best.joblib"))
     rf_preds = rf.predict(X_test)
 
+    #convert our test in [0,1]
+    y_test = y_test.astype(int)
+
     #display analysis F1 score, accuracy, precision, recall
+    print(f"\n{'Metric':<20}{'MLP':<15}{'RF':<15}")
+    print("-"*50)
+    print(f"{'F1 Score':<20}{f1_score(y_test,mlp_preds):<15.4f}{f1_score(y_test, rf_preds):<15.4f}")
+    print(f"{'Accuracy':<20}{(mlp_preds == y_test).mean():15.4f}{(rf_preds == y_test).mean():15.4f}")
+
+    mlp_report = classification_report(y_test, mlp_preds, target_names=["OK", "FAILURE"], output_dict=True)
+    rf_report = classification_report(y_test, rf_preds, target_names=["OK", "FAILURE"], output_dict=True)
+
+    print(f"\n{'':<20}{'MLP':<15}{'RF':<15}")
+    print("="*50)
+    for cls in ["OK", "FAILURE"]:
+        print(f"{cls+' precision':<20}{mlp_report[cls]['precision']:<15.4f}{rf_report[cls]['precision']:<15.4f}")
+        print(f"{cls+' recal':<20}{mlp_report[cls]['recall']:<15.4f}{rf_report[cls]['recall']:<15.4f}")
+        print(f"{cls+' F1'<20}{mlp_report[cls]['f1-score']:<15.4f}{rf_report[cls]['f1-score']:<15.4f}")
 
     #display disagree
+    disagree = (mlp_preds != rf_preds)
+    print(f"\ndisagreement : {disagree.sum()} samples({disagree.mean()*100:.1f}%)")
+    if disagree.sum() > 0:
+        print(f" of which actual FAILURE : {y_test[disagree].sum()}")
 
     #display feature importance for RF
+    imp = pd.Series(rf.feature_importances_,
+                    index=rf.feature_names_in_).sort_values(ascending=False)
 
-    pass
+    print("RF feature importance :")
+    for name, val in imp.items():
+        bar = "O" * int(val*50)
+        print(f" {name:<30} {val:.4f} {bar}")
 
 
 # --------Main function call and menu--------
@@ -388,7 +423,24 @@ def main():
             rf_train(X_train_df, y_train, X_val_df, y_val)
 
         elif choice == 3:
-            pass
+            ckpt = torch.load(os.path.join(SAVE_DIR, "mlp_machfail_final.pth")
+                              map_location=device, weights_only=True)
+
+            mlp = TabularMLP(ckpt["input_dim"], ckpt["hidden_layers"]).to(device)
+            mlp.load_state_dict(ckpt["model_state_dict"])
+
+            val_ds = TensorDataset(
+                torch.tensor(X_test, dtype=torch.float32),
+                torch.tensor(y_test, dtype=torch.float32))
+            test_loader = DataLoader(val_ds, batch_size=MLP_BATCH, shuffle=False)
+
+            pos_weight = torch.tensor([(len(y_test)-y_test.sum()) / max(y_test.sum(),1)]).to(device)
+            criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+            _, acc, preds, labels = mlp_evaluate(mlp, test_loader, criterion, device)
+
+            print(f"MLP test accuracy: {acc:.4f}")
+            print(classification_report(labels, preds, target_names=["OK", "FAILURE"]))
+            print(confusion_matrix(labels, preds))
 
         elif choice == 4:
             rf = joblib.load(os.path.join(SAVE_DIR, "rf_machfail_best.joblib"))
@@ -396,7 +448,7 @@ def main():
             rf_evaluate(rf, X_test_df, y_test)
 
         elif choice == 5:
-            pass
+            compare_models(X_test, y_test, device)
 
         else:
             break
