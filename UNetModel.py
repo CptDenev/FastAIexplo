@@ -50,6 +50,38 @@ class Up(nn.Module):
         x=torch.cat([x, skip], dim=1)
         return self.conv(x)
 
-
+"""
+    UNet global
+"""
 class UNet(nn.Module):
-    pass
+    def __init__(self, in_channels=3, num_classes=6, base_filters=64):
+        super().__init__()
+        f = base_filters
+        #ENCODERS
+        self.enc1 = DoubleConv(in_channels, f)
+        self.enc2 = Down(f, f*2)
+        self.enc3 = Down(f*2, f*4)
+        self.enc4 = Down(f*4, f*8)
+        self.bottleneck = DoubleConv(f*8, f*16)
+        #DECODERS
+        self.dec4 = Up(f*16, f*8)
+        self.dec3 = Up(f*8, f*4)
+        self.dec2 = Up(f*4, f*2)
+        self.dec1 = Up(f*2, f)
+        #HEAD Conv 1*1 -> num_classes by pixel
+        self.head = nn.Conv2d(f, num_classes, kernel_size=1)
+
+    def forward(self, x):
+        #encoders
+        e1 = self.enc1(x)
+        e2 = self.enc2(e1)
+        e3 = self.enc3(e2)
+        e4 = self.enc4(e3)
+        b = self.bottleneck(e4)
+        #decoders
+        d4 = self.dec4(b, e4)
+        d3 = self.dec3(d4, e3)
+        d2 = self.dec2(d3, e2)
+        d1 = self.dec1(d2, e1)        
+        #head
+        return self.head(d1)
