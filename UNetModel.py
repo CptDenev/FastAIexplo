@@ -11,7 +11,7 @@ class DoubleConv(nn.Module):
         super().__init__()
         self.net = nn.Sequential(
             nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1),
-            nn.BatchNorm2D(out_ch),
+            nn.BatchNorm2d(out_ch),
             nn.ReLU(inplace=True),
             nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1),
             nn.BatchNorm2d(out_ch),
@@ -21,10 +21,23 @@ class DoubleConv(nn.Module):
     def forward(self, x):
         return self.net(x)
 
+"""
+    Downsample
+    Divide H and W by 2 and then call DoubleConv
+"""
 class Down(nn.Module):
-    pass
+    def __init__(self, in_ch, out_ch):
+        super().__init__()
+        self.pool = nn.MaxPool2d(2)
+        self.conv = DoubleConv(in_ch, out_ch)
 
+    def forward(self, x):
+        return self.conv(self.pool(x))
 
+"""
+    Upsample
+    
+"""
 class Up(nn.Module):
     pass
 
