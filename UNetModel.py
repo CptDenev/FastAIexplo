@@ -13,7 +13,7 @@ class DoubleConv(nn.Module):
             nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1),
             nn.BatchNorm2d(out_ch),
             nn.ReLU(inplace=True),
-            nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1),
+            nn.Conv2d(out_ch, out_ch, kernel_size=3, padding=1),
             nn.BatchNorm2d(out_ch),
             nn.ReLU(inplace=True)
         )
@@ -54,7 +54,7 @@ class Up(nn.Module):
     UNet global
 """
 class UNet(nn.Module):
-    def __init__(self, in_channels=3, num_classes=6, base_filters=64):
+    def __init__(self, in_channels=3, num_classes=8, base_filters=64):
         super().__init__()
         f = base_filters
         #ENCODERS
