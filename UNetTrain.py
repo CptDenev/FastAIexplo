@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
+from torchvision import transforms as T
 
 from UNetModel import UNet
 from torchgeo.datasets import LoveDA
@@ -43,10 +44,20 @@ def getDevice():
 
 
 def getDataSet():
-    train_ds = LoveDA(root=DATA_PATH, split="train", download=True)
-    val_ds= LoveDA(root=DATA_PATH, split="val", download=True)
-    test_ds = LoveDA(root=DATA_PATH, split="test", download=True)
+    train_ds = LoveDA(root=DATA_PATH, split="train", download=True, transforms=make_transform)
+    val_ds= LoveDA(root=DATA_PATH, split="val", download=True, transforms=make_transform)
+    test_ds = LoveDA(root=DATA_PATH, split="test", download=True, transforms=make_transform)
     return train_ds, val_ds, test_ds
+
+
+def make_transform(sample, size=512):
+    sample['image'] = T.functional.resize(
+        sample['image'], size, interpolation=T.InterpolationMode.BILINEAR
+    )
+    sample['mask'] = T.functional.resize(
+        sample['mask'].unsqueeze(0), size, interpolation=T.InterpolationMode.NEAREST
+    ).squeeze(0)
+    return sample
 
 
 def unet_train_one_epoch(model, loader, criterion, optimizer, device):
@@ -75,7 +86,7 @@ def unet_evaluate(model, loader, criterion, device):
 
     for batch in loader:
         images = batch['image'].to(device)
-        mask = batch[mask].to(device)
+        mask = batch['mask'].to(device)
 
         logits = model(images)
         loss = criterion(logits, mask)
@@ -103,7 +114,7 @@ def unet_train(train_ds, val_ds, device):
         #we update our LR based on val_loss
         scheduler.step(val_loss)
 
-        print(f"epoch: {epoch:.3d} | train loss: {train_loss:3d} | val loss: {val_loss:3d}")
+        print(f"epoch: {epoch} | train loss: {train_loss:.4f} | val loss: {val_loss:.4f}")
 
 
 #---Main---
@@ -120,13 +131,14 @@ def main():
     print(f"Mask : {sample['mask'].shape} dtype : {sample['mask'].dtype}")
     print(f"Mask value : {sample['mask'].unique().tolist()}")
 
+    
     train_dl = DataLoader(train_ds, batch_size=4, shuffle=True, num_workers=2)
     val_dl = DataLoader(val_ds, batch_size=4, shuffle=False, num_workers=2)
 
     batch = next(iter(train_dl))
     print(f"\nbatch image : {batch['image'].shape}")
     print(f"batch mask : {batch['mask'].shape}")
-
+    
     unet_train(train_ds,val_ds,device)
 
 

@@ -18,6 +18,7 @@
 | MLP | Feedforward (3-4 hidden layers) | MNIST (0-9) | 920 kB | ✅ |
 | RF vs MLP | Multi n estimators and Feedforward with model comparison | AI4I2020 CSV | 2.6 MB | ✅ |
 | ResNet18 Fine-tune for classification| ResNet18 pretrained (fastai) | photo batch taken on site | 45 MB | ✅ Deployed on [HF Space](https://huggingface.co/spaces/CptDenev/Conciergerie) |
+| U-Net | Down and Up encoder and decoders | LoveDA | — | 🚧 |
 | RNN / LSTM — *(upcoming)* | Sequential | — | — | 📋 |
 | Attention / small Transformer — *(upcoming)* | Self-attention | — | — | 📋 |
 
