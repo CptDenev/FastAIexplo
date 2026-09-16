@@ -4,7 +4,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
-from PIL import Image
 
 from UNetModel import UNet
 from torchgeo.datasets import LoveDA
@@ -92,7 +91,7 @@ def unet_train(train_ds, val_ds, device):
     val_dl = DataLoader(val_ds, batch_size=4, shuffle=False, num_workers=2)
 
     #model definition
-    model = UNet(in_channels=IN_CHANNEL, num_classes=NUM_CLASSES, base_filters=64)
+    model = UNet(in_channels=IN_CHANNEL, num_classes=NUM_CLASSES, base_filters=64).to(device)
     #loss function with ignore pixel given
     criterion = nn.CrossEntropyLoss(ignore_index=IGNORE_INDEX)
     optimizer = torch.optim.Adam(model.parameters(), lr=UNET_LR, weight_decay=1e-4)
@@ -125,8 +124,11 @@ def main():
     val_dl = DataLoader(val_ds, batch_size=4, shuffle=False, num_workers=2)
 
     batch = next(iter(train_dl))
-    print(f"\n batch image : {batch['image'].shape}")
+    print(f"\nbatch image : {batch['image'].shape}")
     print(f"batch mask : {batch['mask'].shape}")
+
+    unet_train(train_ds,val_ds,device)
+
 
 
 
