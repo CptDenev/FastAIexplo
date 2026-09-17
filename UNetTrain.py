@@ -54,7 +54,7 @@ def getDataSet():
     return train_subset, val_subset, test_ds
 
 
-def make_transform(sample, size=512):
+def make_transform(sample, size=768):
     sample['image'] = T.functional.resize(
         sample['image'], size, interpolation=T.InterpolationMode.BILINEAR
     )
@@ -121,7 +121,7 @@ def unet_train(train_ds, val_ds, device):
     best_val = float('inf')
 
     for epoch in range(1, UNET_EPOCHS+1):
-        train_loss = unet_train_one_epoch(model, train_dl, criterion, optimizer, device)
+        train_loss = unet_train_one_epoch(model, train_dl, criterion, optimizer, scaler, device)
         val_loss =  unet_evaluate(model, val_dl, criterion, device)
         #we update our LR based on val_loss
         scheduler.step(val_loss)
