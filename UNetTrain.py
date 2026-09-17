@@ -64,7 +64,7 @@ def make_transform(sample, size=512):
     return sample
 
 
-def unet_train_one_epoch(model, loader, criterion, optimizer, device):
+def unet_train_one_epoch(model, loader, criterion, optimizer, scaler, device):
     model.train()
     total_loss = 0.0
 
@@ -73,10 +73,14 @@ def unet_train_one_epoch(model, loader, criterion, optimizer, device):
         mask = batch['mask'].to(device)
 
         optimizer.zero_grad()
-        logits = model(images)
-        loss = criterion(logits, mask)
-        loss.backward()
-        optimizer.step()
+
+        with torch.autocast('cuda'):
+            logits = model(images)
+            loss = criterion(logits, mask)
+
+        scaler.scale(loss).backward()
+        scaler.step(optimizer)
+        scaler.update()
 
         total_loss += loss.item() * images.size(0)
 
@@ -111,6 +115,8 @@ def unet_train(train_ds, val_ds, device):
     criterion = nn.CrossEntropyLoss(ignore_index=IGNORE_INDEX)
     optimizer = torch.optim.Adam(model.parameters(), lr=UNET_LR, weight_decay=1e-4)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=5, factor=0.5)
+
+    scaler = torch.amp.GradScaler()
 
     best_val = float('inf')
 
@@ -154,8 +160,6 @@ def main():
     print(f"batch mask : {batch['mask'].shape}")
     
     unet_train(train_ds,val_ds,device)
-
-
 
 
 if __name__ == '__main__':
