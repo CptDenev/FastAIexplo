@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, Subset
 from torchvision import transforms as T
 
 from UNetModel import UNet
@@ -31,7 +31,7 @@ NUM_CLASSES = 8
 IGNORE_INDEX = 7
 IN_CHANNEL = 3
 UNET_LR = 0.001
-UNET_EPOCHS = 30
+UNET_EPOCHS = 50
 
 #---Device detection---
 def getDevice():
@@ -47,7 +47,11 @@ def getDataSet():
     train_ds = LoveDA(root=DATA_PATH, split="train", download=True, transforms=make_transform)
     val_ds= LoveDA(root=DATA_PATH, split="val", download=True, transforms=make_transform)
     test_ds = LoveDA(root=DATA_PATH, split="test", download=True, transforms=make_transform)
-    return train_ds, val_ds, test_ds
+
+    train_subset = Subset(train_ds, range(600))
+    val_subset = Subset(val_ds, range(300))
+
+    return train_subset, val_subset, test_ds
 
 
 def make_transform(sample, size=512):
@@ -106,7 +110,9 @@ def unet_train(train_ds, val_ds, device):
     #loss function with ignore pixel given
     criterion = nn.CrossEntropyLoss(ignore_index=IGNORE_INDEX)
     optimizer = torch.optim.Adam(model.parameters(), lr=UNET_LR, weight_decay=1e-4)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=3, factor=0.5)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=5, factor=0.5)
+
+    best_val = float('inf')
 
     for epoch in range(1, UNET_EPOCHS+1):
         train_loss = unet_train_one_epoch(model, train_dl, criterion, optimizer, device)
@@ -115,6 +121,14 @@ def unet_train(train_ds, val_ds, device):
         scheduler.step(val_loss)
 
         print(f"epoch: {epoch} | train loss: {train_loss:.4f} | val loss: {val_loss:.4f}")
+        # save best
+        if val_loss < best_val:
+            best_val = val_loss
+            torch.save(model.state_dict(), f"{SAVE_DIR}/best_unet.pth")
+
+    # save final aussi
+    torch.save(model.state_dict(), f"{SAVE_DIR}/last_unet.pth")
+    print(f"\nSaved. Best val loss: {best_val:.4f}")
 
 
 #---Main---
