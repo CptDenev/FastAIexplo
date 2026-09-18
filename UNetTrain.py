@@ -52,10 +52,10 @@ def getDataSet():
     val_ds= LoveDA(root=DATA_PATH, split="val", download=True, transforms=make_transform)
     test_ds = LoveDA(root=DATA_PATH, split="test", download=True, transforms=make_transform)
 
-    train_subset = Subset(train_ds, range(600))
-    val_subset = Subset(val_ds, range(300))
+    #train_subset = Subset(train_ds, range(600))
+    #val_subset = Subset(val_ds, range(300))
 
-    return train_subset, val_subset, test_ds
+    return train_ds, val_ds, test_ds
 
 #---Data augmentation---
 def make_transform(sample, size=1024):
@@ -66,7 +66,7 @@ def make_transform(sample, size=1024):
     image = T.functional.resize(image, size, interpolation=T.InterpolationMode.BILINEAR)
     mask  = T.functional.resize(mask, size, interpolation=T.InterpolationMode.NEAREST)
 
-    # augmentations
+    #augmentation random flip on H and V
     if torch.rand(1).item() > 0.5:
         image = T.functional.hflip(image)
         mask  = T.functional.hflip(mask)
@@ -74,6 +74,7 @@ def make_transform(sample, size=1024):
         image = T.functional.vflip(image)
         mask  = T.functional.vflip(mask)
 
+    #augmentation random rot -30 or +30
     angle = int(torch.randint(-30, 30, (1,)).item())
     if angle != 0:
         image = T.functional.rotate(image, angle)
@@ -108,7 +109,7 @@ def dice_loss(logits, targets, num_classes, ignore_idx=7, smooth=1e-5):
 
     for c in range(num_classes):
         pred_c = probs[:,c] * valid
-        target_c = ((targets == c).float() & (targets != ignore_idx)).float()
+        target_c = ((targets == c) & (targets != ignore_idx)).float()
 
         intersection = (pred_c * target_c).sum()
         union = pred_c.sum() + target_c.sum()
@@ -260,12 +261,14 @@ def main():
     print(f"batch mask : {batch['mask'].shape}")
 
     #training
-    #unet_train(train_ds,val_ds,device)
+    unet_train(train_ds,val_ds,device)
 
     #unit test
+    """
     model = UNet(in_channels=IN_CHANNEL, num_classes=NUM_CLASSES, base_filters=64).to(device)
     model.load_state_dict(torch.load(f"{SAVE_DIR}/best_unet.pth", map_location=device, weights_only=True))
     visualize_pred(model, val_ds,device)
+    """
 
 if __name__ == '__main__':
     main()
