@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader, Subset
 from torchvision import transforms as T
+import matplotlib.pyplot as plt
 
 from UNetModel import UNet
 from torchgeo.datasets import LoveDA
@@ -30,8 +31,8 @@ CLASS_NAME =[
 NUM_CLASSES = 8
 IGNORE_INDEX = 7
 IN_CHANNEL = 3
-UNET_LR = 0.001
-UNET_EPOCHS = 50
+UNET_LR = 3e-4
+UNET_EPOCHS = 150
 
 #---Device detection---
 def getDevice():
@@ -53,15 +54,33 @@ def getDataSet():
 
     return train_subset, val_subset, test_ds
 
-
+#---Data augmentation---
 def make_transform(sample, size=768):
-    sample['image'] = T.functional.resize(
-        sample['image'], size, interpolation=T.InterpolationMode.BILINEAR
-    )
-    sample['mask'] = T.functional.resize(
-        sample['mask'].unsqueeze(0), size, interpolation=T.InterpolationMode.NEAREST
-    ).squeeze(0)
-    return sample
+    image = sample['image']
+    mask  = sample['mask'].unsqueeze(0)  # (1, H, W)
+
+    # resize
+    image = T.functional.resize(image, size, interpolation=T.InterpolationMode.BILINEAR)
+    mask  = T.functional.resize(mask, size, interpolation=T.InterpolationMode.NEAREST)
+
+    # augmentations
+    if torch.rand(1).item() > 0.5:
+        image = T.functional.hflip(image)
+        mask  = T.functional.hflip(mask)
+    if torch.rand(1).item() > 0.5:
+        image = T.functional.vflip(image)
+        mask  = T.functional.vflip(mask)
+
+    angle = int(torch.randint(-30, 30, (1,)).item())
+    if angle != 0:
+        image = T.functional.rotate(image, angle)
+        mask  = T.functional.rotate(mask, angle, interpolation=T.InterpolationMode.NEAREST)
+
+    return {'image': image, 'mask': mask.squeeze(0)} 
+
+
+
+
 
 
 def unet_train_one_epoch(model, loader, criterion, optimizer, scaler, device):
@@ -113,8 +132,8 @@ def unet_train(train_ds, val_ds, device):
     model = UNet(in_channels=IN_CHANNEL, num_classes=NUM_CLASSES, base_filters=64).to(device)
     #loss function with ignore pixel given
     criterion = nn.CrossEntropyLoss(ignore_index=IGNORE_INDEX)
-    optimizer = torch.optim.Adam(model.parameters(), lr=UNET_LR, weight_decay=1e-4)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=5, factor=0.5)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=UNET_LR, weight_decay=1e-4)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=10, factor=0.5)
 
     scaler = torch.amp.GradScaler()
 
@@ -135,6 +154,42 @@ def unet_train(train_ds, val_ds, device):
     # save final aussi
     torch.save(model.state_dict(), f"{SAVE_DIR}/last_unet.pth")
     print(f"\nSaved. Best val loss: {best_val:.4f}")
+
+
+def visualize_pred(model, dataset, device, n_samples=4):
+
+    model.eval()
+    fig, axes = plt.subplots(n_samples, 3, figsize=(15, 5*n_samples))
+
+    for i in range(n_samples):
+        sample = dataset[i]
+        image = sample['image'].unsqueeze(0).to(device)
+        mask = sample['mask']
+
+        with torch.no_grad():
+            logits = model(image)
+            pred = logits.argmax(dim=1).squeeze(0).cpu()
+            #logits: (1, 8, 768, 768)
+            #mask:   (1, 768, 768)
+            sample_loss = F.cross_entropy(logits, mask.to(device).unsqueeze(0), ignore_index=7).item()
+
+        #color fix
+        img_np = image[0].permute(1,2,0).cpu().numpy()
+        axes[i][0].imshow(img_np/255.0)
+        axes[i][0].set_title("Input")
+        axes[i][0].axis('off')
+
+        axes[i][1].imshow(mask.numpy(), cmap='tab10', vmin=0, vmax=7)
+        axes[i][1].set_title("Ground truth")
+        axes[i][1].axis('off')
+
+        axes[i][2].imshow(pred.numpy(), cmap='tab10', vmin=0, vmax=7)
+        axes[i][2].set_title(f"Pred (loss={sample_loss:.3f})")
+        axes[i][2].axis('off')
+
+    plt.tight_layout()
+    plt.savefig("./checkpoints/predictions", dpi=100)
+    plt.show()
 
 
 #---Main---
@@ -158,9 +213,14 @@ def main():
     batch = next(iter(train_dl))
     print(f"\nbatch image : {batch['image'].shape}")
     print(f"batch mask : {batch['mask'].shape}")
-    
-    unet_train(train_ds,val_ds,device)
 
+    #training
+    #unet_train(train_ds,val_ds,device)
+
+    #unit test
+    model = UNet(in_channels=IN_CHANNEL, num_classes=NUM_CLASSES, base_filters=64).to(device)
+    model.load_state_dict(torch.load(f"{SAVE_DIR}/best_unet.pth", map_location=device, weights_only=True))
+    visualize_pred(model, val_ds,device)
 
 if __name__ == '__main__':
     main()
