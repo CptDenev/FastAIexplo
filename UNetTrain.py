@@ -5,7 +5,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader, Subset
 from torchvision import transforms as T
+from scipy.ndimage import median_filter
+from skimage.morphology import closing, disk
 import matplotlib.pyplot as plt
+
 
 from UNetModel import UNet
 from torchgeo.datasets import LoveDA
@@ -55,7 +58,7 @@ def getDataSet():
     return train_subset, val_subset, test_ds
 
 #---Data augmentation---
-def make_transform(sample, size=768):
+def make_transform(sample, size=1024):
     image = sample['image']
     mask  = sample['mask'].unsqueeze(0)  # (1, H, W)
 
@@ -79,7 +82,46 @@ def make_transform(sample, size=768):
     return {'image': image, 'mask': mask.squeeze(0)} 
 
 
+def postprocess(mask_pred):
+    #median filter
+    mask_smooth = median_filter(mask_pred, size=3)
 
+    #morphological closing (fill the empty zones)
+    mask_final = np.zeros_like(mask_smooth)
+    for c in range(1, NUM_CLASSES - 1):
+        binary = (mask_smooth == c).astype(np.uint8)
+        #kernel with radius == 2
+        closed = closing(binary, disk(radius=2))
+        mask_final[closed.astype(bool)] = c
+
+    return mask_final
+
+
+#---DICE loss---
+def dice_loss(logits, targets, num_classes, ignore_idx=7, smooth=1e-5):
+    #logits : (B, C, H, W)
+    #targets : (B, H, W)
+    probs = torch.softmax(logits, dim=1)
+    #valid mask
+    valid = (targets != ignore_idx).float()
+    total = 0.0
+
+    for c in range(num_classes):
+        pred_c = probs[:,c] * valid
+        target_c = ((targets == c).float() & (targets != ignore_idx)).float()
+
+        intersection = (pred_c * target_c).sum()
+        union = pred_c.sum() + target_c.sum()
+
+        dice_c = (2*intersection + smooth) / (union + smooth)
+        total += dice_c
+
+    return 1 - (total/num_classes)
+
+def combined_loss(logits, target, num_classes, ignore_idx=7):
+    ce = F.cross_entropy(logits, target, ignore_index=ignore_idx)
+    dice = dice_loss(logits, target, num_classes, ignore_idx=ignore_idx)
+    return 0.5 * ce + 0.5  * dice
 
 
 
@@ -122,17 +164,18 @@ def unet_evaluate(model, loader, criterion, device):
     return total_loss / len(loader.dataset)
 
 
+
 def unet_train(train_ds, val_ds, device):
     torch.manual_seed(SEED)
 
-    train_dl = DataLoader(train_ds, batch_size=4, shuffle=True, num_workers=2)
-    val_dl = DataLoader(val_ds, batch_size=4, shuffle=False, num_workers=2)
+    train_dl = DataLoader(train_ds, batch_size=1, shuffle=True, num_workers=2)
+    val_dl = DataLoader(val_ds, batch_size=1, shuffle=False, num_workers=2)
 
     #model definition
     model = UNet(in_channels=IN_CHANNEL, num_classes=NUM_CLASSES, base_filters=64).to(device)
     #loss function with ignore pixel given
-    criterion = nn.CrossEntropyLoss(ignore_index=IGNORE_INDEX)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=UNET_LR, weight_decay=1e-4)
+    criterion = lambda logits, mask: combined_loss(logits, mask, NUM_CLASSES, IGNORE_INDEX)
+    optimizer = torch.optim.AdamW   (model.parameters(), lr=UNET_LR, weight_decay=1e-4)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=10, factor=0.5)
 
     scaler = torch.amp.GradScaler()
@@ -168,7 +211,9 @@ def visualize_pred(model, dataset, device, n_samples=4):
 
         with torch.no_grad():
             logits = model(image)
-            pred = logits.argmax(dim=1).squeeze(0).cpu()
+            pred = logits.argmax(dim=1).squeeze(0).cpu().numpy()
+            pred = postprocess(pred)
+
             #logits: (1, 8, 768, 768)
             #mask:   (1, 768, 768)
             sample_loss = F.cross_entropy(logits, mask.to(device).unsqueeze(0), ignore_index=7).item()
@@ -183,7 +228,7 @@ def visualize_pred(model, dataset, device, n_samples=4):
         axes[i][1].set_title("Ground truth")
         axes[i][1].axis('off')
 
-        axes[i][2].imshow(pred.numpy(), cmap='tab10', vmin=0, vmax=7)
+        axes[i][2].imshow(pred, cmap='tab10', vmin=0, vmax=7)
         axes[i][2].set_title(f"Pred (loss={sample_loss:.3f})")
         axes[i][2].axis('off')
 
