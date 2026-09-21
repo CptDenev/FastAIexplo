@@ -8,7 +8,8 @@ from torchvision import transforms as T
 from scipy.ndimage import median_filter
 from skimage.morphology import closing, disk
 import matplotlib.pyplot as plt
-
+from matplotlib.patches import Patch
+from matplotlib.colors import ListedColormap, BoundaryNorm
 
 from UNetModel import UNet
 from torchgeo.datasets import LoveDA
@@ -21,18 +22,34 @@ SAVE_DIR="./checkpoints"
 
 #class name from LOveDA ds
 CLASS_NAME =[
+    "no-data",
     "background",
     "building",
     "road",
     "water",
     "barren",
     "forest",
-    "agriculture",
-    "no-data"
+    "agriculture"
 ]
 
+CLASS_COLORS = [
+    "#000000",  # 0 no-data (noir, ignoré visuellement)
+    "#3C1098",  # 1 background (violet foncé)
+    "#8429F6",  # 2 building
+    "#6EC1E4",  # 3 road
+    "#0000FF",  # 4 water
+    "#B08C5C",  # 5 barren
+    "#228B22",  # 6 forest
+    "#FFFF00",  # 7 agriculture
+]
+
+cmap = ListedColormap(CLASS_COLORS)
+# bounds: une frontière entre chaque entier de classe, +1 à la fin
+bounds = np.arange(len(CLASS_COLORS) + 1) - 0.5  # [-0.5, 0.5, 1.5, ..., 7.5]
+norm = BoundaryNorm(bounds, cmap.N)
+
 NUM_CLASSES = 8
-IGNORE_INDEX = 7
+IGNORE_INDEX = 0
 IN_CHANNEL = 3
 UNET_LR = 3e-4
 UNET_EPOCHS = 150
@@ -233,6 +250,9 @@ def visualize_pred(model, dataset, device, n_samples=4):
         axes[i][2].set_title(f"Pred (loss={sample_loss:.3f})")
         axes[i][2].axis('off')
 
+    legend_elements = [Patch(facecolor=CLASS_COLORS[i], label=CLASS_NAME[i]) for i in range(len(CLASS_NAME))]
+    fig.legend(handles=legend_elements, loc='lower center', ncol=4)
+
     plt.tight_layout()
     plt.savefig("./checkpoints/predictions", dpi=100)
     plt.show()
@@ -261,14 +281,14 @@ def main():
     print(f"batch mask : {batch['mask'].shape}")
 
     #training
-    unet_train(train_ds,val_ds,device)
+    #unet_train(train_ds,val_ds,device)
 
     #unit test
-    """
+    
     model = UNet(in_channels=IN_CHANNEL, num_classes=NUM_CLASSES, base_filters=64).to(device)
     model.load_state_dict(torch.load(f"{SAVE_DIR}/best_unet.pth", map_location=device, weights_only=True))
     visualize_pred(model, val_ds,device)
-    """
+    
 
 if __name__ == '__main__':
     main()
