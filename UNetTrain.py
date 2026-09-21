@@ -1,12 +1,15 @@
 import os
 import numpy as np
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader, Subset
 from torchvision import transforms as T
+
 from scipy.ndimage import median_filter
 from skimage.morphology import closing, disk
+
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 from matplotlib.colors import ListedColormap, BoundaryNorm
@@ -280,14 +283,26 @@ def main():
     print(f"\nbatch image : {batch['image'].shape}")
     print(f"batch mask : {batch['mask'].shape}")
 
-    #training
-    #unet_train(train_ds,val_ds,device)
+    while True:
 
-    #unit test
-    
-    model = UNet(in_channels=IN_CHANNEL, num_classes=NUM_CLASSES, base_filters=64).to(device)
-    model.load_state_dict(torch.load(f"{SAVE_DIR}/best_unet.pth", map_location=device, weights_only=True))
-    visualize_pred(model, val_ds,device)
+        print("---Love DA U-Net model training---")
+        print("1: train U-Net model")
+        print("2: visualize pred on last best val loss pth")
+        print("0: quit")
+
+        choice = int(input("choose : "))
+
+        if choice == 1:
+            #training
+            unet_train(train_ds,val_ds,device)
+
+        elif choice == 2:
+            model = UNet(in_channels=IN_CHANNEL, num_classes=NUM_CLASSES, base_filters=64).to(device)
+            model.load_state_dict(torch.load(f"{SAVE_DIR}/best_unet.pth", map_location=device, weights_only=True))
+            visualize_pred(model, val_ds,device)
+
+        else:
+            break
     
 
 if __name__ == '__main__':
