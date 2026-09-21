@@ -7,7 +7,7 @@ import torch.nn as nn
 """
 class DoubleConv(nn.Module):
 
-    def __init__(self, in_ch, out_ch):
+    def __init__(self, in_ch, out_ch, dropout=0.0):
         super().__init__()
         self.net = nn.Sequential(
             nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1),
@@ -16,7 +16,8 @@ class DoubleConv(nn.Module):
             nn.Conv2d(out_ch, out_ch, kernel_size=3, padding=1),
             nn.BatchNorm2d(out_ch),
             nn.ReLU(inplace=True),
-            nn.Dropout2d(0.1) #add dropout due to too stable loss on val set
+            #check if dropout is wanted else nn.Identity, so do nothing
+            nn.Dropout2d(dropout) if dropout > 0 else nn.Identity() #add dropout due to too stable loss on val set
         )
 
     def forward(self, x):
@@ -27,10 +28,10 @@ class DoubleConv(nn.Module):
     Divide H and W by 2 and then call DoubleConv
 """
 class Down(nn.Module):
-    def __init__(self, in_ch, out_ch):
+    def __init__(self, in_ch, out_ch, dropout=0.0):
         super().__init__()
         self.pool = nn.MaxPool2d(2)
-        self.conv = DoubleConv(in_ch, out_ch)
+        self.conv = DoubleConv(in_ch, out_ch, dropout)
 
     def forward(self, x):
         return self.conv(self.pool(x))
@@ -62,10 +63,10 @@ class UNet(nn.Module):
         self.enc1 = DoubleConv(in_channels, f)
         self.enc2 = Down(f, f*2)
         self.enc3 = Down(f*2, f*4)
-        self.enc4 = Down(f*4, f*8)
+        self.enc4 = Down(f*4, f*8, dropout=0.1)
         #BOTTLENECK
         self.bottleneck_pool = nn.MaxPool2d(2)
-        self.bottleneck = DoubleConv(f*8, f*16)
+        self.bottleneck = DoubleConv(f*8, f*16, dropout=0.1)
         #DECODERS
         self.dec4 = Up(f*16, f*8)
         self.dec3 = Up(f*8, f*4)
