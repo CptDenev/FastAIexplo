@@ -36,8 +36,8 @@ CLASS_NAME =[
 ]
 
 CLASS_COLORS = [
-    "#000000",  # 0 no-data (noir, ignoré visuellement)
-    "#3C1098",  # 1 background (violet foncé)
+    "#000000",  # 0 no-data 
+    "#3C1098",  # 1 background
     "#8429F6",  # 2 building
     "#6EC1E4",  # 3 road
     "#0000FF",  # 4 water
@@ -109,7 +109,7 @@ def postprocess(mask_pred):
 
     #morphological closing (fill the empty zones)
     mask_final = np.zeros_like(mask_smooth)
-    for c in range(1, NUM_CLASSES - 1):
+    for c in range(1, NUM_CLASSES):
         binary = (mask_smooth == c).astype(np.uint8)
         #kernel with radius == 2
         closed = closing(binary, disk(radius=2))
@@ -119,7 +119,7 @@ def postprocess(mask_pred):
 
 
 #---DICE loss---
-def dice_loss(logits, targets, num_classes, ignore_idx=7, smooth=1e-5):
+def dice_loss(logits, targets, num_classes, ignore_idx=0, smooth=1e-5):
     #logits : (B, C, H, W)
     #targets : (B, H, W)
     probs = torch.softmax(logits, dim=1)
@@ -139,7 +139,7 @@ def dice_loss(logits, targets, num_classes, ignore_idx=7, smooth=1e-5):
 
     return 1 - (total/num_classes)
 
-def combined_loss(logits, target, num_classes, ignore_idx=7):
+def combined_loss(logits, target, num_classes, ignore_idx=0):
     ce = F.cross_entropy(logits, target, ignore_index=ignore_idx)
     dice = dice_loss(logits, target, num_classes, ignore_idx=ignore_idx)
     return 0.5 * ce + 0.5  * dice
@@ -237,7 +237,7 @@ def visualize_pred(model, dataset, device, n_samples=4):
 
             #logits: (1, 8, 768, 768)
             #mask:   (1, 768, 768)
-            sample_loss = F.cross_entropy(logits, mask.to(device).unsqueeze(0), ignore_index=7).item()
+            sample_loss = F.cross_entropy(logits, mask.to(device).unsqueeze(0), ignore_index=IGNORE_INDEX).item()
 
         #color fix
         img_np = image[0].permute(1,2,0).cpu().numpy()
@@ -245,11 +245,11 @@ def visualize_pred(model, dataset, device, n_samples=4):
         axes[i][0].set_title("Input")
         axes[i][0].axis('off')
 
-        axes[i][1].imshow(mask.numpy(), cmap='tab10', vmin=0, vmax=7)
+        axes[i][1].imshow(mask.numpy(), cmap=cmap, norm=norm)
         axes[i][1].set_title("Ground truth")
         axes[i][1].axis('off')
 
-        axes[i][2].imshow(pred, cmap='tab10', vmin=0, vmax=7)
+        axes[i][2].imshow(pred, cmap=cmap, norm=norm)
         axes[i][2].set_title(f"Pred (loss={sample_loss:.3f})")
         axes[i][2].axis('off')
 
