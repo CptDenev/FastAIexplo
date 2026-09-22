@@ -15,6 +15,7 @@ from matplotlib.patches import Patch
 from matplotlib.colors import ListedColormap, BoundaryNorm
 
 from UNetModel import UNet
+from UNetEarlyStop import EarlyStopping
 from torchgeo.datasets import LoveDA
 
 
@@ -47,7 +48,6 @@ CLASS_COLORS = [
 ]
 
 cmap = ListedColormap(CLASS_COLORS)
-# bounds: une frontière entre chaque entier de classe, +1 à la fin
 bounds = np.arange(len(CLASS_COLORS) + 1) - 0.5  # [-0.5, 0.5, 1.5, ..., 7.5]
 norm = BoundaryNorm(bounds, cmap.N)
 
@@ -56,6 +56,7 @@ IGNORE_INDEX = 0
 IN_CHANNEL = 3
 UNET_LR = 3e-4
 UNET_EPOCHS = 150
+PATIENCE = 25
 
 #---Device detection---
 def getDevice():
@@ -200,7 +201,7 @@ def unet_train(train_ds, val_ds, device):
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=10, factor=0.5)
 
     scaler = torch.amp.GradScaler()
-
+    early_stopper = EarlyStopping(patience=PATIENCE)
     best_val = float('inf')
 
     for epoch in range(1, UNET_EPOCHS+1):
@@ -214,6 +215,10 @@ def unet_train(train_ds, val_ds, device):
         if val_loss < best_val:
             best_val = val_loss
             torch.save(model.state_dict(), f"{SAVE_DIR}/best_unet.pth")
+
+        #early stop
+        if early_stopper.step(val_loss):
+            print(f"Early stop at {epoch} | best val loss : {early_stopper.best_loss:.4f}")
 
     # save final aussi
     torch.save(model.state_dict(), f"{SAVE_DIR}/last_unet.pth")
