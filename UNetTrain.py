@@ -6,6 +6,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader, Subset
 from torchvision import transforms as T
+from torchmetrics.classification import MulticlassConfusionMatrix, MulticlassJaccardIndex
+
+import seaborn as sns
 
 from scipy.ndimage import median_filter
 from skimage.morphology import closing, disk
@@ -190,8 +193,8 @@ def unet_evaluate(model, loader, criterion, device):
 def unet_train(train_ds, val_ds, device):
     torch.manual_seed(SEED)
 
-    train_dl = DataLoader(train_ds, batch_size=1, shuffle=True, num_workers=2)
-    val_dl = DataLoader(val_ds, batch_size=1, shuffle=False, num_workers=2)
+    train_dl = DataLoader(train_ds, batch_size=4, shuffle=True, num_workers=2)
+    val_dl = DataLoader(val_ds, batch_size=4, shuffle=False, num_workers=2)
 
     #model definition
     model = UNet(in_channels=IN_CHANNEL, num_classes=NUM_CLASSES, base_filters=64).to(device)
@@ -266,6 +269,16 @@ def visualize_pred(model, dataset, device, n_samples=4):
     plt.show()
 
 
+#--- Evaluate confusion---
+@torch.no_grad()
+def evaluate_confusion(model, loader, num_classes, ignore_index, device):
+    pass
+
+
+def plot_confusion(cm, class_names, ignore_index):
+    pass
+
+
 #---Main---
 def main():
     device = getDevice()
@@ -293,6 +306,7 @@ def main():
         print("---Love DA U-Net model training---")
         print("1: train U-Net model")
         print("2: visualize pred on last best val loss pth")
+        print("3: evaluate confusion on best_unet.pth")
         print("0: quit")
 
         choice = int(input("choose : "))
@@ -305,6 +319,9 @@ def main():
             model = UNet(in_channels=IN_CHANNEL, num_classes=NUM_CLASSES, base_filters=64).to(device)
             model.load_state_dict(torch.load(f"{SAVE_DIR}/best_unet.pth", map_location=device, weights_only=True))
             visualize_pred(model, val_ds,device)
+
+        elif choice == 3:
+            pass
 
         else:
             break
