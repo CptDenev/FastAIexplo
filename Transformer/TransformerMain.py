@@ -5,7 +5,7 @@ import numpy as np
 import torch
 
 
-#--- Config ---
+#--- Config and hyperparameters ---
 SEED = 33
 DATA_PATH = "./data"
 SAVE_PATH = "./checkpoints"
@@ -27,3 +27,22 @@ def getDevice():
         return torch.device("cpu")
 
 
+
+#--- Main loop ---
+def main():
+    device = getDevice()
+
+
+    while True:
+        print("1: Train model")
+        print("2: Eval best saved model")
+        print("3: Generate a story")
+        print("4: Export to .gguf")
+        print("0: Exit program")
+        choice = int(input("Enter a choice : "))
+
+
+
+
+if __name__ == '__main__':
+    main()
