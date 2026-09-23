@@ -110,9 +110,9 @@ def make_transform(sample, size=1024):
 def postprocess(mask_pred):
     #median filter
     mask_smooth = median_filter(mask_pred, size=3)
-
     #morphological closing (fill the empty zones)
-    mask_final = np.zeros_like(mask_smooth)
+    mask_final = mask_smooth.copy()
+
     for c in range(1, NUM_CLASSES):
         binary = (mask_smooth == c).astype(np.uint8)
         #kernel with radius == 2
@@ -120,6 +120,24 @@ def postprocess(mask_pred):
         mask_final[closed.astype(bool)] = c
 
     return mask_final
+
+
+#---Class weights---
+def compute_class_weights(dataset, num_classes, ignore_index, sample_limit=500):
+    counts = np.zeros(num_classes)
+    for i in range(min(len(dataset), sample_limit)):
+        mask = dataset[i]['mask'].numpy()
+        for c in range(num_classes):
+            if c != ignore_index:
+                counts[c] += (mask == c).sum()
+
+    counts[ignore_index] = 1
+    freq = counts / counts.sum()
+    weights = 1.0 / (freq + 1e-6)
+    weights[ignore_index] = 0.0                         
+    weights = weights / weights.sum() * (num_classes - 1)
+    return torch.tensor(weights, dtype=torch.float32)
+
 
 
 #---DICE loss---
@@ -130,25 +148,29 @@ def dice_loss(logits, targets, num_classes, ignore_idx=0, smooth=1e-5):
     #valid mask
     valid = (targets != ignore_idx).float()
     total = 0.0
+    n_real_classes = 0
 
     for c in range(num_classes):
-        pred_c = probs[:,c] * valid
+        if c == ignore_idx:
+            continue
+        pred_c = probs[:, c] * valid
         target_c = ((targets == c) & (targets != ignore_idx)).float()
 
         intersection = (pred_c * target_c).sum()
         union = pred_c.sum() + target_c.sum()
 
-        dice_c = (2*intersection + smooth) / (union + smooth)
+        dice_c = (2 * intersection + smooth) / (union + smooth)
         total += dice_c
+        n_real_classes += 1
 
-    return 1 - (total/num_classes)
+    return 1 - (total / n_real_classes)
 
-def combined_loss(logits, target, num_classes, ignore_idx=0):
-    ce = F.cross_entropy(logits, target, ignore_index=ignore_idx)
+def combined_loss(logits, target, num_classes, ignore_idx=0, class_weights=None):
+    ce = F.cross_entropy(logits, target, ignore_index=ignore_idx, weight=class_weights)
     dice = dice_loss(logits, target, num_classes, ignore_idx=ignore_idx)
     return 0.5 * ce + 0.5  * dice
 
-
+#---Train one epoch and evaluate---
 
 def unet_train_one_epoch(model, loader, criterion, optimizer, scaler, device):
     model.train()
@@ -198,8 +220,11 @@ def unet_train(train_ds, val_ds, device):
 
     #model definition
     model = UNet(in_channels=IN_CHANNEL, num_classes=NUM_CLASSES, base_filters=64).to(device)
+
+    class_weights = compute_class_weights(train_ds, NUM_CLASSES, IGNORE_INDEX).to(device)
+    
     #loss function with ignore pixel given
-    criterion = lambda logits, mask: combined_loss(logits, mask, NUM_CLASSES, IGNORE_INDEX)
+    criterion = lambda logits, mask: combined_loss(logits, mask, NUM_CLASSES, IGNORE_INDEX, class_weights)
     optimizer = torch.optim.AdamW   (model.parameters(), lr=UNET_LR, weight_decay=1e-4)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=10, factor=0.5)
 
@@ -222,10 +247,14 @@ def unet_train(train_ds, val_ds, device):
         #early stop
         if early_stopper.step(val_loss):
             print(f"Early stop at {epoch} | best val loss : {early_stopper.best_loss:.4f}")
+            break
 
     # save final aussi
     torch.save(model.state_dict(), f"{SAVE_DIR}/last_unet.pth")
     print(f"\nSaved. Best val loss: {best_val:.4f}")
+
+
+#---visualize predictions---
 
 
 def visualize_pred(model, dataset, device, n_samples=4):
