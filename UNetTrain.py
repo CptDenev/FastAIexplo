@@ -272,11 +272,46 @@ def visualize_pred(model, dataset, device, n_samples=4):
 #--- Evaluate confusion---
 @torch.no_grad()
 def evaluate_confusion(model, loader, num_classes, ignore_index, device):
-    pass
+    model.eval()
+
+    confmat = MulticlassConfusionMatrix(
+        num_classes=num_classes, ignore_index=ignore_index
+    ).to(device)
+
+    iou_per_class = MulticlassJaccardIndex(
+        num_classes=num_classes, ignore_index=ignore_index, average=None
+    ).to(device)
+
+    for batch in loader:
+        images = batch["image"].to(device)
+        mask = batch["mask"].to(device)
+
+        logits = model(images)
+        preds = logits.argmax(dim=1)
+
+        confmat.update(preds, mask)
+        iou_per_class.update(preds, mask)
+
+    return confmat.compute().cpu().numpy() , iou_per_class.compute().cpu().numpy()
 
 
 def plot_confusion(cm, class_names, ignore_index):
-    pass
+    #delete no-data
+    keep = [i for i in range(len(class_names)) if i != ignore_index]
+    cm_clean = cm[keep][:, keep]
+    labels_clean = [class_names[i] for i in keep]
+
+    #normalization per line
+    cm_norm = cm_clean / (cm_clean.sum(axis=1, keepdims=True) + 1e-9)
+
+    plt.figure(figsize=(8,6))
+    sns.heatmap(cm_norm, annot=True, fmt=".2f", cmap="Blues",
+                xticklabels=labels_clean, yticklabels=labels_clean)
+    plt.xlabel("Predicted")
+    plt.ylabel("True")
+    plt.title("Normalized confusion matrix")
+    plt.savefig("./checkpoints/confusion_matrix.png", dpi=100)
+    plt.show()
 
 
 #---Main---
@@ -321,7 +356,18 @@ def main():
             visualize_pred(model, val_ds,device)
 
         elif choice == 3:
-            pass
+            model = UNet(in_channels=IN_CHANNEL, num_classes=NUM_CLASSES, base_filters=64).to(device)
+            model.load_state_dict(torch.load(f"{SAVE_DIR}/best_unet.pth", map_location=device, weights_only=True))
+
+            cm, ious = evaluate_confusion(model, val_dl, NUM_CLASSES, IGNORE_INDEX, device)
+
+            for i, name in enumerate(CLASS_NAME):
+                if i == IGNORE_INDEX:
+                    continue
+                print(f"{name:12s} IoU : {ious[i]:.3f}")
+
+            plot_confusion(cm, CLASS_NAME, IGNORE_INDEX)
+
 
         else:
             break
