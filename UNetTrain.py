@@ -59,7 +59,7 @@ IGNORE_INDEX = 0
 IN_CHANNEL = 3
 UNET_LR = 3e-4
 UNET_EPOCHS = 150
-PATIENCE = 25
+PATIENCE = 32
 
 #---Device detection---
 def getDevice():
@@ -165,10 +165,60 @@ def dice_loss(logits, targets, num_classes, ignore_idx=0, smooth=1e-5):
 
     return 1 - (total / n_real_classes)
 
-def combined_loss(logits, target, num_classes, ignore_idx=0, class_weights=None):
+
+#---Tversky loss---
+def tversky_loss(logits, targets, num_classes, ignore_idx=0, alpha=None, beta=None, smooth=1e-5):
+    probs = torch.softmax(logits, dim=1)
+    valid = (targets != ignore_idx).float()
+
+    # default value : classic dice (0.5/0.5)
+    if alpha is None:
+        alpha = torch.full((num_classes,), 0.5, device=logits.device)
+    if beta is None:
+        beta = torch.full((num_classes,), 0.5, device=logits.device)
+
+    total = 0.0
+    n_real_classes = 0
+
+    for c in range(num_classes):
+        if c == ignore_idx:
+            continue
+        pred_c = probs[:, c] * valid
+        target_c = ((targets == c) & (targets != ignore_idx)).float()
+
+        TP = (pred_c * target_c).sum()
+        FP = (pred_c * (1 - target_c)).sum()
+        FN = ((1 - pred_c) * target_c * valid).sum()
+
+        tversky_c = (TP + smooth) / (TP + alpha[c] * FP + beta[c] * FN + smooth)
+        total += tversky_c
+        n_real_classes += 1
+
+    return 1 - (total / n_real_classes)
+
+
+def get_tversky_weights(num_classes, class_name, device):
+    alpha = torch.full((num_classes,), 0.5)
+    beta = torch.full((num_classes,), 0.5)
+
+    # fix building over BG
+    idx_building = class_name.index("building")
+    alpha[idx_building] = 0.6
+    beta[idx_building] = 0.4
+
+    # road, water, barren let BG appear
+    for name in ["road", "water", "barren"]:
+        idx = class_name.index(name)
+        alpha[idx] = 0.4
+        beta[idx] = 0.6
+
+    return alpha.to(device), beta.to(device)
+
+#---Combined loss---
+def combined_loss(logits, target, num_classes, ignore_idx=0, class_weights=None, alpha=None, beta=None):
     ce = F.cross_entropy(logits, target, ignore_index=ignore_idx, weight=class_weights)
-    dice = dice_loss(logits, target, num_classes, ignore_idx=ignore_idx)
-    return 0.5 * ce + 0.5  * dice
+    tv = tversky_loss(logits, target, num_classes, ignore_idx=ignore_idx, alpha=alpha, beta=beta)
+    return 0.5 * ce + 0.5  * tv
 
 #---Train one epoch and evaluate---
 
@@ -223,8 +273,10 @@ def unet_train(train_ds, val_ds, device):
 
     class_weights = compute_class_weights(train_ds, NUM_CLASSES, IGNORE_INDEX).to(device)
     
-    #loss function with ignore pixel given
-    criterion = lambda logits, mask: combined_loss(logits, mask, NUM_CLASSES, IGNORE_INDEX, class_weights)
+    #custom loss with CE + Tversky to maximise "thin" segmentation and punish class bleeding
+    tv_alpha, tv_beta = get_tversky_weights(NUM_CLASSES, CLASS_NAME, device)
+    criterion = lambda logits, mask: combined_loss(logits, mask, NUM_CLASSES, IGNORE_INDEX, class_weights, tv_alpha, tv_beta)
+    
     optimizer = torch.optim.AdamW   (model.parameters(), lr=UNET_LR, weight_decay=1e-4)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=10, factor=0.5)
 
