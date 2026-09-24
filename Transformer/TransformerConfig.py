@@ -1,14 +1,32 @@
+import os
 from dataclasses import dataclass
 
+SEED = 33
+
+#paths
+DATA_DIR = "./data"
+CHECKPOINT_DIR = "./checkpoints"
+TOKENIZER_PATH = os.path.join(DATA_DIR, "tokenizer.json")
+TRAIN_BIN = os.path.join(DATA_DIR, "train.bin")
+VAL_BIN = os.path.join(DATA_DIR, "val.bin")
+
+#special tokens
+BOS_TOKEN = "<bos>"
+EOS_TOKEN = "<eos>"
+SPECIAL_TOKENS = [BOS_TOKEN, EOS_TOKEN]
+
+#data preparation
+TRAIN_SUBSET_SIZE = 50_000
+
 @dataclass
-class ModelCongif:
+class ModelConfig:
     #tokenizer vocab soze
     vocab_size: int = 4096
     #vec dimension
     hidden_size: int = 384
-    num_hidden_layer: int = 6
+    num_hidden_layers: int = 6
     #attention head with Q,K,V projection
-    num_attention_head: int = 6
+    num_attention_heads: int = 6
     num_key_value_heads: int = 6
     #SwiGLU dim
     intermediate_size: int = 1024
@@ -23,10 +41,21 @@ class ModelCongif:
     #dropout set to 0
     dropout: float = 0.0
 
+    def __post_init__(self):
+        assert self.hidden_size % self.num_attention_heads == 0, \
+            f"hidden_size ({self.hidden_size}) must be divisible by num attention heads"
+        assert self.num_attention_heads % self.num_key_value_heads == 0, \
+            f"num_attention_heads ({self.num_attention_heads}) must be divisible by num key value heads"
+        assert self.head_dim % 2 == 0, \
+            f"head_dim ({self.head_dim}) must be even for RoPE"
+
+    @property
+    def head_dim(self):
+        return self.hidden_size // self.num_attention_heads
+
 
 @dataclass
 class TrainConfig:
-    seed: int = 33
     #training block size
     block_size: int = 256
     #sequence by forward
@@ -56,3 +85,18 @@ class TrainConfig:
     dtype: str = "bfloat16"
     #how many eval without progress we wait
     early_stop_patience: int = 5
+
+
+#Sanity check
+def main():
+    ModelConfig()
+    print(ModelConfig().head_dim)
+    try :
+        ModelConfig(hidden_size=100)
+        print("FAIL : invalid config accepted")
+    except AssertionError as e:
+        print(f"OK : {e}")
+
+
+if __name__ == '__main__':
+    main()
