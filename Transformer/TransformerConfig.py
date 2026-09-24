@@ -87,7 +87,7 @@ class TrainConfig:
     early_stop_patience: int = 5
 
 
-#Sanity check
+#---Sanity check---
 def main():
     ModelConfig()
     print(ModelConfig().head_dim)
