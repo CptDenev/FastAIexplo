@@ -1,11 +1,12 @@
 import os
 import numpy as np
+import torch
 
 from datasets import load_dataset
 
 from tokenizers import Tokenizer, models, pre_tokenizers, decoders, trainers
 
-from TransformerConfig import SEED, SPECIAL_TOKENS, DATA_DIR, TOKENIZER_PATH, BOS_TOKEN, EOS_TOKEN, TRAIN_BIN, VAL_BIN, ModelConfig, TrainConfig
+from TransformerConfig import SEED, SPECIAL_TOKENS, DATA_DIR, TOKENIZER_PATH, BOS_TOKEN, EOS_TOKEN, TRAIN_BIN, VAL_BIN, TRAIN_SUBSET_SIZE, ModelConfig, TrainConfig
 
 #load and clean data from TinyStories
 def load_raw(subset_size=None):
@@ -66,8 +67,25 @@ def encode_split(texts, tokenizer, path):
     print(f"{len(texts)} stories -> {len(arr)} tokens save at {path}")
     return len(arr)
 
-def get_batch(split, cfg, device):
-    pass
+def get_batch(split, cfg, device, rng):
+    path = TRAIN_BIN if split == "train" else VAL_BIN
+    #reopened at each call to avoid memmap memory leak
+    data = np.memmap(path, dtype=np.uint16, mode="r")
+
+    #random window starts, high bound excluded
+    ix = rng.integers(0, len(data) - cfg.block_size, size=cfg.batch_size)
+
+    #y is x shifted by one token : predict the next token at each position
+    x = torch.stack([torch.from_numpy(data[i : i + cfg.block_size].astype(np.int64)) for i in ix])
+    y = torch.stack([torch.from_numpy(data[i + 1 : i + 1 + cfg.block_size].astype(np.int64)) for i in ix])
+
+    if device.type == "cuda":
+        #pinned memory allows async transfer while GPU computes
+        x = x.pin_memory().to(device, non_blocking=True)
+        y = y.pin_memory().to(device, non_blocking=True)
+    else:
+        x, y = x.to(device), y.to(device)
+    return x, y
 
 #Load saved pipeline
 def load_tokenizer():
@@ -75,8 +93,19 @@ def load_tokenizer():
         raise FileNotFoundError(f"{TOKENIZER_PATH} not found, run prepare_data first")
     return Tokenizer.from_file(TOKENIZER_PATH)
 
-def prepare_data():
-    pass
+
+def prepare_data(subset_size = TRAIN_SUBSET_SIZE, force = False):
+    files = [TOKENIZER_PATH, TRAIN_BIN, VAL_BIN]
+    if not force and all(0.path.exist(f) for f in files):
+        print("Data already prepared, skipping...")
+        return load_tokenizer()
+
+    train, val = load_raw(subset_size)
+    tok = train_tokenizer(train)
+    encode_split(train, tok, TRAIN_BIN)
+    encode_split(val, tok, VAL_BIN)
+    return tok
+
 
 #---Test function---
 def check_bin(path, n_tokens, n_stories, tokenizer):
@@ -136,6 +165,7 @@ def main():
 
     n_val = encode_split(val, tok, VAL_BIN)
     check_bin(VAL_BIN, n_val, len(val), tok)
+
 
 if __name__ == '__main__':
     main()
