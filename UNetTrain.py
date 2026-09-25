@@ -203,11 +203,11 @@ def get_tversky_weights(num_classes, class_name, device):
 
     # fix building over BG
     idx_building = class_name.index("building")
-    alpha[idx_building] = 0.6
-    beta[idx_building] = 0.4
+    alpha[idx_building] = 0.75
+    beta[idx_building] = 0.25
 
     # road, water, barren let BG appear
-    for name in ["road", "water", "barren"]:
+    for name in ["road", "water"]:
         idx = class_name.index(name)
         alpha[idx] = 0.4
         beta[idx] = 0.6

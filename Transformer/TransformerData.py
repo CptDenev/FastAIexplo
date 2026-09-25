@@ -24,6 +24,7 @@ def load_raw(subset_size=None):
     return train_texts, val_texts
 
 
+#tokenize our datas
 def train_tokenizer(texts):
     #load tokenizer model
     tok = Tokenizer(models.BPE())
@@ -40,6 +41,8 @@ def train_tokenizer(texts):
     print(f"Tokenizer size : {tok.get_vocab_size()} saved at {TOKENIZER_PATH}")
     return tok
 
+
+#convert a list of stories into a signel bin file
 def encode_split(texts, tokenizer, path):
     pass
 
@@ -53,7 +56,6 @@ def prepare_data():
     pass
 
 
-
 #---Sanity check---
 def main():
     train, val = load_raw(50_000)
@@ -63,7 +65,7 @@ def main():
     tok = train_tokenizer(train)
     #vocab size
     vocab_size = tok.get_vocab_size()
-    excpeted = ModelConfig.vocab_size
+    excpeted = ModelConfig().vocab_size
     print(f"{'OK' if vocab_size == excpeted else 'FAIL'} : vocab size {vocab_size} (expected {excpeted})")
     
     #special tokens ids
