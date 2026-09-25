@@ -69,8 +69,11 @@ def encode_split(texts, tokenizer, path):
 def get_batch(split, cfg, device):
     pass
 
+#Load saved pipeline
 def load_tokenizer():
-    pass
+    if not os.path.exists(TOKENIZER_PATH):
+        raise FileNotFoundError(f"{TOKENIZER_PATH} not found, run prepare_data first")
+    return Tokenizer.from_file(TOKENIZER_PATH)
 
 def prepare_data():
     pass
