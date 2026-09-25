@@ -59,9 +59,9 @@ class TrainConfig:
     #training block size
     block_size: int = 256
     #sequence by forward
-    batch_size: int = 64
+    batch_size: int = 128
     #forward/back accumulation before optimizer call => token per step 256*64*4 = 65 536
-    grad_accum_steps: int = 4
+    grad_accum_steps: int = 2
     max_steps: int = 5000
     #linear lr from 0 to lr on 200 first steps
     warmup_steps: int = 200

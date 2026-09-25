@@ -5,7 +5,7 @@ from datasets import load_dataset
 
 from tokenizers import Tokenizer, models, pre_tokenizers, decoders, trainers
 
-from TransformerConfig import SEED, SPECIAL_TOKENS, DATA_DIR, TOKENIZER_PATH, BOS_TOKEN, EOS_TOKEN, ModelConfig
+from TransformerConfig import SEED, SPECIAL_TOKENS, DATA_DIR, TOKENIZER_PATH, BOS_TOKEN, EOS_TOKEN, TRAIN_BIN, VAL_BIN, ModelConfig, TrainConfig
 
 #load and clean data from TinyStories
 def load_raw(subset_size=None):
@@ -44,7 +44,27 @@ def train_tokenizer(texts):
 
 #convert a list of stories into a signel bin file
 def encode_split(texts, tokenizer, path):
-    pass
+    bos_id = tokenizer.token_to_id(BOS_TOKEN)
+    eos_id = tokenizer.token_to_id(EOS_TOKEN)
+
+    assert tokenizer.get_vocab_size() < 2**16, "vocab to large for uint16"
+
+    #parallel encoding in Rust
+    encodings = tokenizer.encode_batch(texts)
+
+    ids=[]
+    for enc in encodings:
+        ids.append(bos_id)
+        ids.extend(enc.ids)
+        ids.append(eos_id)
+
+    #we use numpy in place of python list as python list cost 30 octets by int and numpy tab only 2 octets by int
+    arr = np.array(ids, dtype=np.uint16)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    arr.tofile(path)
+
+    print(f"{len(texts)} stories -> {len(arr)} tokens save at {path}")
+    return len(arr)
 
 def get_batch(split, cfg, device):
     pass
@@ -54,6 +74,31 @@ def load_tokenizer():
 
 def prepare_data():
     pass
+
+#---Test function---
+def check_bin(path, n_tokens, n_stories, tokenizer):
+    bos_id = tokenizer.token_to_id(BOS_TOKEN)
+    eos_id = tokenizer.token_to_id(EOS_TOKEN)
+
+    #file size must be 2 octets by uint6 token
+    size = os.path.getsize(path)
+    print(f"{'OK' if size == n_tokens * 2 else 'FAIL'} : file size {size} byte expected {n_tokens*2}")
+
+    #check if start with BOS
+    data = np.memmap(path, dtype=np.uint16, mode="r")
+    print(f"{'OK' if data[0] == bos_id else 'FAIL'} : first token {data[0]} expected {bos_id}")
+
+    #check if there is only one BOS and one EOS per story
+    n_bos = int((data == bos_id).sum())
+    n_eos = int((data == eos_id).sum())
+    print(f"{'OK' if n_stories == n_bos == n_eos else 'FAIL'} : bos={n_bos} eos={n_eos} expected={n_stories}")
+
+    #visual check, we must see special tokens
+    print(repr(tokenizer.decode(data[:100].tolist(), skip_special_tokens=False)))
+
+    #average story length
+    print(f"avg tokens per story : {n_tokens / n_stories :.1f}")
+
 
 
 #---Sanity check---
@@ -81,6 +126,13 @@ def main():
     #test if encode then decode == original text
     ok = all(tok.decode(tok.encode(t).ids) == t for t in train[:100])
     print(f"{'OK' if ok else 'FAIL'} : round trip on 100 stories")
+
+
+    n_train = encode_split(train, tok, TRAIN_BIN)
+    check_bin(TRAIN_BIN, n_train, len(train), tok)
+
+    n_val = encode_split(val, tok, VAL_BIN)
+    check_bin(VAL_BIN, n_val, len(val), tok)
 
 if __name__ == '__main__':
     main()

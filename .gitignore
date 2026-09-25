@@ -188,3 +188,4 @@ checkpoints/
 dataset/mnist
 dataset/loveda
 test_digits/
+data/
