@@ -64,10 +64,12 @@ class UNet(nn.Module):
         self.enc2 = Down(f, f*2)
         self.enc3 = Down(f*2, f*4)
         self.enc4 = Down(f*4, f*8, dropout=0.1)
+        self.enc5 = Down(f*8, f*16, dropout=0.1)
         #BOTTLENECK
         self.bottleneck_pool = nn.MaxPool2d(2)
-        self.bottleneck = DoubleConv(f*8, f*16, dropout=0.1)
+        self.bottleneck = DoubleConv(f*16, f*32, dropout=0.1)
         #DECODERS
+        self.dec5 = Up(f*32, f*16)
         self.dec4 = Up(f*16, f*8)
         self.dec3 = Up(f*8, f*4)
         self.dec2 = Up(f*4, f*2)
@@ -81,10 +83,12 @@ class UNet(nn.Module):
         e2 = self.enc2(e1)
         e3 = self.enc3(e2)
         e4 = self.enc4(e3)
+        e5 = self.enc5(e4)
         #bottleneck
-        b = self.bottleneck(self.bottleneck_pool(e4))
+        b = self.bottleneck(self.bottleneck_pool(e5))
         #decoders
-        d4 = self.dec4(b, e4)
+        d5 = self.dec5(b, e5)
+        d4 = self.dec4(d5, e4)
         d3 = self.dec3(d4, e3)
         d2 = self.dec2(d3, e2)
         d1 = self.dec1(d2, e1)        
