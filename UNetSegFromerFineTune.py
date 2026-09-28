@@ -113,11 +113,12 @@ class SegformerSeg(nn.Module):
         label2id = {n: i for i, n in id2label.items()}
         self.net = SegformerForSemanticSegmentation.from_pretrained(
             ckpt,
-            num_labels=num_classes,
-            id2label=id2label,
+            id2label=id2label,          # num_labels is derived from len(id2label)
             label2id=label2id,
             ignore_mismatched_sizes=True,
+            use_safetensors=True,       # torch < 2.6 refuses to load .bin (pickle) files
         )
+        assert self.net.config.num_labels == num_classes, "decode head size mismatch"
         #ImageNet mean/std rescaled to the 0-255 range
         self.register_buffer("mean", torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1) * 255.0)
         self.register_buffer("std", torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1) * 255.0)
