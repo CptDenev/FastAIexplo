@@ -5,16 +5,11 @@ import numpy as np
 import torch
 
 
-#--- Config and hyperparameters ---
+#--- Config ---
 SEED = 33
 DATA_PATH = "./data"
 SAVE_PATH = "./checkpoints"
 TOKENIZER_PATH = "./tokenizer"
-
-VOCAB_SIZE = 8192
-
-BATCH_SIZE = 32
-
 
 
 #--- Device detection ---

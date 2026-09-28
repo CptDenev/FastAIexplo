@@ -8,6 +8,7 @@ from torch.utils.data import Dataset, DataLoader, Subset
 from torchvision import transforms as T
 from torchmetrics.classification import MulticlassConfusionMatrix, MulticlassJaccardIndex
 
+import segmentation_models_pytorch as smp
 
 import seaborn as sns
 
@@ -18,7 +19,6 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 from matplotlib.colors import ListedColormap, BoundaryNorm
 
-from UNetModel import UNet
 from UNetEarlyStop import EarlyStopping
 from torchgeo.datasets import LoveDA
 
@@ -26,10 +26,20 @@ from torchgeo.datasets import LoveDA
 #---Config---
 SEED = 33
 DATA_PATH = "./dataset/loveda"
-SAVE_DIR="./checkpoints"
+SAVE_DIR = "./checkpoints"
+
+#---Fine tuning config---
+ENCODER_NAME = "resnet34"    # ImageNet pretrained encoder (smp)
+RUN_TAG = f"{ENCODER_NAME}_tversky_b4"
+BATCH_SIZE = 4
+FREEZE_EPOCHS = 3            # encoder frozen during the first epochs, decoder adapts alone
+ENC_LR = 1e-4                # pretrained encoder, gentle lr
+DEC_LR = 3e-4                # decoder + head, trained from scratch
+NUM_WORKERS_TRAIN = 8
+NUM_WORKERS_VAL = 4
 
 #class name from LOveDA ds
-CLASS_NAME =[
+CLASS_NAME = [
     "no-data",
     "background",
     "building",
@@ -41,7 +51,7 @@ CLASS_NAME =[
 ]
 
 CLASS_COLORS = [
-    "#000000",  # 0 no-data 
+    "#000000",  # 0 no-data
     "#3C1098",  # 1 background
     "#8429F6",  # 2 building
     "#6EC1E4",  # 3 road
@@ -57,10 +67,14 @@ norm = BoundaryNorm(bounds, cmap.N)
 
 NUM_CLASSES = 8
 IGNORE_INDEX = 0
-IN_CHANNEL = 3
-UNET_LR = 3e-4
 UNET_EPOCHS = 150
-PATIENCE = 32
+PATIENCE = 12
+
+
+def ckpt_path(kind):
+    #kind : "best" or "last"
+    return f"{SAVE_DIR}/{kind}_{RUN_TAG}.pth"
+
 
 #---Device detection---
 def getDevice():
@@ -73,8 +87,8 @@ def getDevice():
 
 
 def getDataSet():
-    train_ds = LoveDA(root=DATA_PATH, split="train", download=True, transforms=make_transform)
-    val_ds= LoveDA(root=DATA_PATH, split="val", download=True, transforms=make_transform)
+    train_ds = LoveDA(root=DATA_PATH, split="train", download=True, transforms=make_transform_val)
+    val_ds = LoveDA(root=DATA_PATH, split="val", download=True, transforms=make_transform_val)
     test_ds = LoveDA(root=DATA_PATH, split="test", download=True, transforms=make_transform)
 
     #train_subset = Subset(train_ds, range(600))
@@ -82,30 +96,70 @@ def getDataSet():
 
     return train_ds, val_ds, test_ds
 
+
+#---Model---
+class PretrainedUNet(nn.Module):
+    """
+    U-Net with ImageNet pretrained encoder (segmentation_models_pytorch).
+    The ImageNet normalisation is done INSIDE the model, so the rest of the pipeline
+    keeps feeding raw 0-255 float images (same for the future HF deployment).
+    """
+    def __init__(self, encoder_name="resnet34", num_classes=8):
+        super().__init__()
+        self.net = smp.Unet(
+            encoder_name=encoder_name,
+            encoder_weights="imagenet",
+            in_channels=3,
+            classes=num_classes,
+        )
+        #ImageNet mean/std rescaled to the 0-255 range
+        self.register_buffer("mean", torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1) * 255.0)
+        self.register_buffer("std", torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1) * 255.0)
+
+    def forward(self, x):
+        return self.net((x - self.mean) / self.std)
+
+
+def set_encoder_trainable(model, trainable):
+    for p in model.net.encoder.parameters():
+        p.requires_grad = trainable
+
+
+def build_optimizer(model):
+    #differential lr : gentle on the pretrained encoder, faster on decoder + head
+    enc_params = list(model.net.encoder.parameters())
+    enc_ids = {id(p) for p in enc_params}
+    other_params = [p for p in model.parameters() if id(p) not in enc_ids]
+    return torch.optim.AdamW([
+        {"params": enc_params, "lr": ENC_LR},
+        {"params": other_params, "lr": DEC_LR},
+    ], weight_decay=1e-4)
+
+
 #---Data augmentation---
 def make_transform(sample, size=1024):
     image = sample['image']
-    mask  = sample['mask'].unsqueeze(0)  # (1, H, W)
+    mask = sample['mask'].unsqueeze(0)  # (1, H, W)
 
     # resize
     image = T.functional.resize(image, size, interpolation=T.InterpolationMode.BILINEAR)
-    mask  = T.functional.resize(mask, size, interpolation=T.InterpolationMode.NEAREST)
+    mask = T.functional.resize(mask, size, interpolation=T.InterpolationMode.NEAREST)
 
     #augmentation random flip on H and V
     if torch.rand(1).item() > 0.5:
         image = T.functional.hflip(image)
-        mask  = T.functional.hflip(mask)
+        mask = T.functional.hflip(mask)
     if torch.rand(1).item() > 0.5:
         image = T.functional.vflip(image)
-        mask  = T.functional.vflip(mask)
+        mask = T.functional.vflip(mask)
 
     #augmentation random rot -30 or +30
     angle = int(torch.randint(-30, 30, (1,)).item())
     if angle != 0:
         image = T.functional.rotate(image, angle)
-        mask  = T.functional.rotate(mask, angle, interpolation=T.InterpolationMode.NEAREST)
+        mask = T.functional.rotate(mask, angle, interpolation=T.InterpolationMode.NEAREST)
 
-    return {'image': image, 'mask': mask.squeeze(0)} 
+    return {'image': image, 'mask': mask.squeeze(0)}
 
 
 def postprocess(mask_pred):
@@ -123,6 +177,15 @@ def postprocess(mask_pred):
     return mask_final
 
 
+def make_transform_val(sample, size=1024):
+    #resize only, no flip / rotation : deterministic validation
+    image = sample['image']
+    mask = sample['mask'].unsqueeze(0)
+    image = T.functional.resize(image, size, interpolation=T.InterpolationMode.BILINEAR)
+    mask = T.functional.resize(mask, size, interpolation=T.InterpolationMode.NEAREST)
+    return {'image': image, 'mask': mask.squeeze(0)}
+
+
 #---Class weights---
 def compute_class_weights(dataset, num_classes, ignore_index, sample_limit=500):
     counts = np.zeros(num_classes)
@@ -135,10 +198,9 @@ def compute_class_weights(dataset, num_classes, ignore_index, sample_limit=500):
     counts[ignore_index] = 1
     freq = counts / counts.sum()
     weights = 1.0 / (freq + 1e-6)
-    weights[ignore_index] = 0.0                         
+    weights[ignore_index] = 0.0
     weights = weights / weights.sum() * (num_classes - 1)
     return torch.tensor(weights, dtype=torch.float32)
-
 
 
 #---DICE loss---
@@ -207,7 +269,7 @@ def get_tversky_weights(num_classes, class_name, device):
     alpha[idx_building] = 0.75
     beta[idx_building] = 0.25
 
-    # road, water, barren let BG appear
+    # road, water : let BG appear (barren stays neutral 0.5/0.5)
     for name in ["road", "water"]:
         idx = class_name.index(name)
         alpha[idx] = 0.4
@@ -215,14 +277,15 @@ def get_tversky_weights(num_classes, class_name, device):
 
     return alpha.to(device), beta.to(device)
 
+
 #---Combined loss---
 def combined_loss(logits, target, num_classes, ignore_idx=0, class_weights=None, alpha=None, beta=None):
     ce = F.cross_entropy(logits, target, ignore_index=ignore_idx, weight=class_weights)
     tv = tversky_loss(logits, target, num_classes, ignore_idx=ignore_idx, alpha=alpha, beta=beta)
-    return 0.5 * ce + 0.5  * tv
+    return 0.5 * ce + 0.5 * tv
+
 
 #---Train one epoch and evaluate---
-
 def unet_train_one_epoch(model, loader, criterion, optimizer, scaler, device):
     model.train()
     total_loss = 0.0
@@ -243,7 +306,7 @@ def unet_train_one_epoch(model, loader, criterion, optimizer, scaler, device):
 
         total_loss += loss.item() * images.size(0)
 
-    return total_loss / len(loader.dataset) 
+    return total_loss / len(loader.dataset)
 
 
 @torch.no_grad()
@@ -262,32 +325,41 @@ def unet_evaluate(model, loader, criterion, device):
     return total_loss / len(loader.dataset)
 
 
-
-def unet_train(train_ds, val_ds, device):
+def unet_finetune(train_ds, val_ds, device):
     torch.manual_seed(SEED)
+    os.makedirs(SAVE_DIR, exist_ok=True)
 
-    train_dl = DataLoader(train_ds, batch_size=4, shuffle=True, num_workers=2)
-    val_dl = DataLoader(val_ds, batch_size=4, shuffle=False, num_workers=2)
+    train_dl = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True,
+                      num_workers=NUM_WORKERS_TRAIN, pin_memory=True, persistent_workers=True)
+    val_dl = DataLoader(val_ds, batch_size=BATCH_SIZE, shuffle=False,
+                    num_workers=NUM_WORKERS_VAL, pin_memory=True, persistent_workers=True)
 
     #model definition
-    model = UNet(in_channels=IN_CHANNEL, num_classes=NUM_CLASSES, base_filters=64).to(device)
+    model = PretrainedUNet(ENCODER_NAME, NUM_CLASSES).to(device)
+    n_params = sum(p.numel() for p in model.parameters())
+    print(f"Encoder : {ENCODER_NAME} | run tag : {RUN_TAG} | params : {n_params/1e6:.1f}M")
 
     class_weights = compute_class_weights(train_ds, NUM_CLASSES, IGNORE_INDEX).to(device)
-    
+
     #custom loss with CE + Tversky to maximise "thin" segmentation and punish class bleeding
     tv_alpha, tv_beta = get_tversky_weights(NUM_CLASSES, CLASS_NAME, device)
     criterion = lambda logits, mask: combined_loss(logits, mask, NUM_CLASSES, IGNORE_INDEX, class_weights, tv_alpha, tv_beta)
-    
-    optimizer = torch.optim.AdamW   (model.parameters(), lr=UNET_LR, weight_decay=1e-4)
+
+    optimizer = build_optimizer(model)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=10, factor=0.5)
 
     scaler = torch.amp.GradScaler()
     early_stopper = EarlyStopping(patience=PATIENCE)
     best_val = float('inf')
 
-    for epoch in range(1, UNET_EPOCHS+1):
+    for epoch in range(1, UNET_EPOCHS + 1):
+        #encoder frozen for the first epochs, then unfrozen
+        set_encoder_trainable(model, epoch > FREEZE_EPOCHS)
+        if epoch == FREEZE_EPOCHS + 1:
+            print("--- encoder unfrozen ---")
+
         train_loss = unet_train_one_epoch(model, train_dl, criterion, optimizer, scaler, device)
-        val_loss =  unet_evaluate(model, val_dl, criterion, device)
+        val_loss = unet_evaluate(model, val_dl, criterion, device)
         #we update our LR based on val_loss
         scheduler.step(val_loss)
 
@@ -295,7 +367,7 @@ def unet_train(train_ds, val_ds, device):
         # save best
         if val_loss < best_val:
             best_val = val_loss
-            torch.save(model.state_dict(), f"{SAVE_DIR}/best_unet.pth")
+            torch.save(model.state_dict(), ckpt_path("best"))
 
         #early stop
         if early_stopper.step(val_loss):
@@ -303,17 +375,15 @@ def unet_train(train_ds, val_ds, device):
             break
 
     # save final aussi
-    torch.save(model.state_dict(), f"{SAVE_DIR}/last_unet.pth")
-    print(f"\nSaved. Best val loss: {best_val:.4f}")
+    torch.save(model.state_dict(), ckpt_path("last"))
+    print(f"\nSaved ({RUN_TAG}). Best val loss: {best_val:.4f}")
 
 
 #---visualize predictions---
-
-
 def visualize_pred(model, dataset, device, n_samples=4):
 
     model.eval()
-    fig, axes = plt.subplots(n_samples, 3, figsize=(15, 5*n_samples))
+    fig, axes = plt.subplots(n_samples, 3, figsize=(15, 5 * n_samples))
 
     for i in range(n_samples):
         sample = dataset[i]
@@ -325,13 +395,13 @@ def visualize_pred(model, dataset, device, n_samples=4):
             pred = logits.argmax(dim=1).squeeze(0).cpu().numpy()
             pred = postprocess(pred)
 
-            #logits: (1, 8, 768, 768)
-            #mask:   (1, 768, 768)
+            #logits: (1, 8, H, W)
+            #mask:   (1, H, W)
             sample_loss = F.cross_entropy(logits, mask.to(device).unsqueeze(0), ignore_index=IGNORE_INDEX).item()
 
         #color fix
-        img_np = image[0].permute(1,2,0).cpu().numpy()
-        axes[i][0].imshow(img_np/255.0)
+        img_np = image[0].permute(1, 2, 0).cpu().numpy()
+        axes[i][0].imshow(img_np / 255.0)
         axes[i][0].set_title("Input")
         axes[i][0].axis('off')
 
@@ -347,7 +417,7 @@ def visualize_pred(model, dataset, device, n_samples=4):
     fig.legend(handles=legend_elements, loc='lower center', ncol=4)
 
     plt.tight_layout()
-    plt.savefig("./checkpoints/predictions", dpi=100)
+    plt.savefig(f"{SAVE_DIR}/predictions_{RUN_TAG}.png", dpi=100)
     plt.show()
 
 
@@ -374,7 +444,7 @@ def evaluate_confusion(model, loader, num_classes, ignore_index, device):
         confmat.update(preds, mask)
         iou_per_class.update(preds, mask)
 
-    return confmat.compute().cpu().numpy() , iou_per_class.compute().cpu().numpy()
+    return confmat.compute().cpu().numpy(), iou_per_class.compute().cpu().numpy()
 
 
 def plot_confusion(cm, class_names, ignore_index):
@@ -386,20 +456,27 @@ def plot_confusion(cm, class_names, ignore_index):
     #normalization per line
     cm_norm = cm_clean / (cm_clean.sum(axis=1, keepdims=True) + 1e-9)
 
-    plt.figure(figsize=(8,6))
+    plt.figure(figsize=(8, 6))
     sns.heatmap(cm_norm, annot=True, fmt=".2f", cmap="Blues",
                 xticklabels=labels_clean, yticklabels=labels_clean)
     plt.xlabel("Predicted")
     plt.ylabel("True")
-    plt.title("Normalized confusion matrix")
-    plt.savefig("./checkpoints/confusion_matrix.png", dpi=100)
+    plt.title(f"Normalized confusion matrix ({RUN_TAG})")
+    plt.savefig(f"{SAVE_DIR}/confusion_matrix_{RUN_TAG}.png", dpi=100)
     plt.show()
+
+
+def load_best_model(device):
+    model = PretrainedUNet(ENCODER_NAME, NUM_CLASSES).to(device)
+    model.load_state_dict(torch.load(ckpt_path("best"), map_location=device, weights_only=True))
+    return model
 
 
 #---Main---
 def main():
     device = getDevice()
     print(f"Device :{device}")
+    print(f"Encoder : {ENCODER_NAME} | run tag : {RUN_TAG}")
 
     #get data set and check dtype and length
     train_ds, val_ds, test_ds = getDataSet()
@@ -410,9 +487,8 @@ def main():
     print(f"Mask : {sample['mask'].shape} dtype : {sample['mask'].dtype}")
     print(f"Mask value : {sample['mask'].unique().tolist()}")
 
-    
-    train_dl = DataLoader(train_ds, batch_size=4, shuffle=True, num_workers=2)
-    val_dl = DataLoader(val_ds, batch_size=4, shuffle=False, num_workers=2)
+    train_dl = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True, num_workers=2)
+    val_dl = DataLoader(val_ds, batch_size=BATCH_SIZE, shuffle=False, num_workers=2)
 
     batch = next(iter(train_dl))
     print(f"\nbatch image : {batch['image'].shape}")
@@ -420,26 +496,24 @@ def main():
 
     while True:
 
-        print("---Love DA U-Net model training---")
-        print("1: train U-Net model")
-        print("2: visualize pred on last best val loss pth")
-        print("3: evaluate confusion on best_unet.pth")
+        print("---Love DA U-Net fine tuning---")
+        print("1: fine tune model")
+        print("2: visualize pred on best val loss pth")
+        print("3: evaluate confusion on best val loss pth")
         print("0: quit")
 
         choice = int(input("choose : "))
 
         if choice == 1:
             #training
-            unet_train(train_ds,val_ds,device)
+            unet_finetune(train_ds, val_ds, device)
 
         elif choice == 2:
-            model = UNet(in_channels=IN_CHANNEL, num_classes=NUM_CLASSES, base_filters=64).to(device)
-            model.load_state_dict(torch.load(f"{SAVE_DIR}/best_unet.pth", map_location=device, weights_only=True))
-            visualize_pred(model, val_ds,device)
+            model = load_best_model(device)
+            visualize_pred(model, val_ds, device)
 
         elif choice == 3:
-            model = UNet(in_channels=IN_CHANNEL, num_classes=NUM_CLASSES, base_filters=64).to(device)
-            model.load_state_dict(torch.load(f"{SAVE_DIR}/best_unet.pth", map_location=device, weights_only=True))
+            model = load_best_model(device)
 
             cm, ious = evaluate_confusion(model, val_dl, NUM_CLASSES, IGNORE_INDEX, device)
 
@@ -450,10 +524,9 @@ def main():
 
             plot_confusion(cm, CLASS_NAME, IGNORE_INDEX)
 
-
         else:
             break
-    
+
 
 if __name__ == '__main__':
     main()
