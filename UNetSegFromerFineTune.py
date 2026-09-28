@@ -8,7 +8,7 @@ from torch.utils.data import Dataset, DataLoader, Subset
 from torchvision import transforms as T
 from torchmetrics.classification import MulticlassConfusionMatrix, MulticlassJaccardIndex
 
-import segmentation_models_pytorch as smp
+from transformers import SegformerForSemanticSegmentation
 
 import seaborn as sns
 
@@ -24,18 +24,19 @@ from torchgeo.datasets import LoveDA
 
 
 #---Config---
-SEED = 34
+SEED = 33
 DATA_PATH = "./dataset/loveda"
 SAVE_DIR = "./checkpoints"
 
 #---Fine tuning config---
-ENCODER_NAME = "resnet34"    # ImageNet pretrained encoder (smp)
-RUN_TAG = f"{ENCODER_NAME}_tversky_b4_bld85_brn60_seed{SEED}"
+SEGFORMER_CKPT = "nvidia/mit-b2"     # ImageNet pretrained MiT encoder (decode head starts from scratch)
+ENCODER_TAG = SEGFORMER_CKPT.split("/")[-1].replace("mit-", "")   # "b2"
+RUN_TAG = f"segformer_{ENCODER_TAG}_tversky_b4_bld85_brn60"
 BATCH_SIZE = 4
-FREEZE_EPOCHS = 3            # encoder frozen during the first epochs, decoder adapts alone
-ENC_LR = 1e-4                # pretrained encoder, gentle lr
-DEC_LR = 3e-4                # decoder + head, trained from scratch
-NUM_WORKERS_TRAIN = 8
+FREEZE_EPOCHS = 3            # encoder frozen during the first epochs, decode head adapts alone
+ENC_LR = 6e-5                # pretrained encoder, usual SegFormer order of magnitude
+DEC_LR = 6e-4                # decode head, trained from scratch
+NUM_WORKERS_TRAIN = 8        # lower to 6 / 2 if RAM is tight
 NUM_WORKERS_VAL = 4
 
 #class name from LOveDA ds
@@ -68,7 +69,7 @@ norm = BoundaryNorm(bounds, cmap.N)
 NUM_CLASSES = 8
 IGNORE_INDEX = 0
 UNET_EPOCHS = 150
-PATIENCE = 12
+PATIENCE = 12                # keep aligned with the last resnet34 runs for a fair comparison
 
 
 def ckpt_path(kind):
@@ -87,9 +88,10 @@ def getDevice():
 
 
 def getDataSet():
-    train_ds = LoveDA(root=DATA_PATH, split="train", download=True, transforms=make_transform_val)
+    #train : augmented / val + test : deterministic (resize only)
+    train_ds = LoveDA(root=DATA_PATH, split="train", download=True, transforms=make_transform)
     val_ds = LoveDA(root=DATA_PATH, split="val", download=True, transforms=make_transform_val)
-    test_ds = LoveDA(root=DATA_PATH, split="test", download=True, transforms=make_transform)
+    test_ds = LoveDA(root=DATA_PATH, split="test", download=True, transforms=make_transform_val)
 
     #train_subset = Subset(train_ds, range(600))
     #val_subset = Subset(val_ds, range(300))
@@ -98,36 +100,46 @@ def getDataSet():
 
 
 #---Model---
-class PretrainedUNet(nn.Module):
+class SegformerSeg(nn.Module):
     """
-    U-Net with ImageNet pretrained encoder (segmentation_models_pytorch).
-    The ImageNet normalisation is done INSIDE the model, so the rest of the pipeline
-    keeps feeding raw 0-255 float images (same for the future HF deployment).
+    SegFormer (transformers) with the ImageNet normalisation done INSIDE the model,
+    so the pipeline keeps feeding raw 0-255 float images.
+    SegFormer outputs logits at 1/4 of the input resolution : they are upsampled
+    back to full resolution in forward(), so loss / visu / eval are unchanged.
     """
-    def __init__(self, encoder_name="resnet34", num_classes=8):
+    def __init__(self, ckpt=SEGFORMER_CKPT, num_classes=8):
         super().__init__()
-        self.net = smp.Unet(
-            encoder_name=encoder_name,
-            encoder_weights="imagenet",
-            in_channels=3,
-            classes=num_classes,
+        id2label = {i: n for i, n in enumerate(CLASS_NAME)}
+        label2id = {n: i for i, n in id2label.items()}
+        self.net = SegformerForSemanticSegmentation.from_pretrained(
+            ckpt,
+            num_labels=num_classes,
+            id2label=id2label,
+            label2id=label2id,
+            ignore_mismatched_sizes=True,
         )
         #ImageNet mean/std rescaled to the 0-255 range
         self.register_buffer("mean", torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1) * 255.0)
         self.register_buffer("std", torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1) * 255.0)
 
     def forward(self, x):
-        return self.net((x - self.mean) / self.std)
+        h, w = x.shape[-2:]
+        logits = self.net(pixel_values=(x - self.mean) / self.std).logits   # (B, C, H/4, W/4)
+        return F.interpolate(logits, size=(h, w), mode="bilinear", align_corners=False)
+
+
+def get_encoder(model):
+    return model.net.segformer
 
 
 def set_encoder_trainable(model, trainable):
-    for p in model.net.encoder.parameters():
+    for p in get_encoder(model).parameters():
         p.requires_grad = trainable
 
 
 def build_optimizer(model):
-    #differential lr : gentle on the pretrained encoder, faster on decoder + head
-    enc_params = list(model.net.encoder.parameters())
+    #differential lr : gentle on the pretrained encoder, faster on the decode head
+    enc_params = list(get_encoder(model).parameters())
     enc_ids = {id(p) for p in enc_params}
     other_params = [p for p in model.parameters() if id(p) not in enc_ids]
     return torch.optim.AdamW([
@@ -162,6 +174,15 @@ def make_transform(sample, size=1024):
     return {'image': image, 'mask': mask.squeeze(0)}
 
 
+def make_transform_val(sample, size=1024):
+    #resize only, no flip / rotation : deterministic validation
+    image = sample['image']
+    mask = sample['mask'].unsqueeze(0)
+    image = T.functional.resize(image, size, interpolation=T.InterpolationMode.BILINEAR)
+    mask = T.functional.resize(mask, size, interpolation=T.InterpolationMode.NEAREST)
+    return {'image': image, 'mask': mask.squeeze(0)}
+
+
 def postprocess(mask_pred):
     #median filter
     mask_smooth = median_filter(mask_pred, size=3)
@@ -175,15 +196,6 @@ def postprocess(mask_pred):
         mask_final[closed.astype(bool)] = c
 
     return mask_final
-
-
-def make_transform_val(sample, size=1024):
-    #resize only, no flip / rotation : deterministic validation
-    image = sample['image']
-    mask = sample['mask'].unsqueeze(0)
-    image = T.functional.resize(image, size, interpolation=T.InterpolationMode.BILINEAR)
-    mask = T.functional.resize(mask, size, interpolation=T.InterpolationMode.NEAREST)
-    return {'image': image, 'mask': mask.squeeze(0)}
 
 
 #---Class weights---
@@ -264,16 +276,17 @@ def get_tversky_weights(num_classes, class_name, device):
     alpha = torch.full((num_classes,), 0.5)
     beta = torch.full((num_classes,), 0.5)
 
-    # fix building over BG
+    # building : penalise false positives (bleeding from background)
     idx_building = class_name.index("building")
     alpha[idx_building] = 0.85
     beta[idx_building] = 0.15
 
+    # barren : slightly favour precision (too many false positive blobs)
     idx_barren = class_name.index("barren")
     alpha[idx_barren] = 0.6
     beta[idx_barren] = 0.4
 
-    # road, water : let BG appear (barren stays neutral 0.5/0.5)
+    # road, water : favour recall, let BG appear
     for name in ["road", "water"]:
         idx = class_name.index(name)
         alpha[idx] = 0.4
@@ -290,7 +303,7 @@ def combined_loss(logits, target, num_classes, ignore_idx=0, class_weights=None,
 
 
 #---Train one epoch and evaluate---
-def unet_train_one_epoch(model, loader, criterion, optimizer, scaler, device):
+def seg_train_one_epoch(model, loader, criterion, optimizer, scaler, device):
     model.train()
     total_loss = 0.0
 
@@ -314,7 +327,7 @@ def unet_train_one_epoch(model, loader, criterion, optimizer, scaler, device):
 
 
 @torch.no_grad()
-def unet_evaluate(model, loader, criterion, device):
+def seg_evaluate(model, loader, criterion, device):
     model.eval()
     total_loss = 0.0
 
@@ -329,19 +342,19 @@ def unet_evaluate(model, loader, criterion, device):
     return total_loss / len(loader.dataset)
 
 
-def unet_finetune(train_ds, val_ds, device):
+def seg_finetune(train_ds, val_ds, device):
     torch.manual_seed(SEED)
     os.makedirs(SAVE_DIR, exist_ok=True)
 
     train_dl = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True,
-                      num_workers=NUM_WORKERS_TRAIN, pin_memory=True, persistent_workers=True)
+                          num_workers=NUM_WORKERS_TRAIN, pin_memory=True, persistent_workers=True)
     val_dl = DataLoader(val_ds, batch_size=BATCH_SIZE, shuffle=False,
-                    num_workers=NUM_WORKERS_VAL, pin_memory=True, persistent_workers=True)
+                        num_workers=NUM_WORKERS_VAL, pin_memory=True, persistent_workers=True)
 
     #model definition
-    model = PretrainedUNet(ENCODER_NAME, NUM_CLASSES).to(device)
+    model = SegformerSeg(SEGFORMER_CKPT, NUM_CLASSES).to(device)
     n_params = sum(p.numel() for p in model.parameters())
-    print(f"Encoder : {ENCODER_NAME} | run tag : {RUN_TAG} | params : {n_params/1e6:.1f}M")
+    print(f"Model : {SEGFORMER_CKPT} | run tag : {RUN_TAG} | params : {n_params/1e6:.1f}M")
 
     class_weights = compute_class_weights(train_ds, NUM_CLASSES, IGNORE_INDEX).to(device)
 
@@ -362,8 +375,8 @@ def unet_finetune(train_ds, val_ds, device):
         if epoch == FREEZE_EPOCHS + 1:
             print("--- encoder unfrozen ---")
 
-        train_loss = unet_train_one_epoch(model, train_dl, criterion, optimizer, scaler, device)
-        val_loss = unet_evaluate(model, val_dl, criterion, device)
+        train_loss = seg_train_one_epoch(model, train_dl, criterion, optimizer, scaler, device)
+        val_loss = seg_evaluate(model, val_dl, criterion, device)
         #we update our LR based on val_loss
         scheduler.step(val_loss)
 
@@ -471,7 +484,7 @@ def plot_confusion(cm, class_names, ignore_index):
 
 
 def load_best_model(device):
-    model = PretrainedUNet(ENCODER_NAME, NUM_CLASSES).to(device)
+    model = SegformerSeg(SEGFORMER_CKPT, NUM_CLASSES).to(device)
     model.load_state_dict(torch.load(ckpt_path("best"), map_location=device, weights_only=True))
     return model
 
@@ -480,7 +493,7 @@ def load_best_model(device):
 def main():
     device = getDevice()
     print(f"Device :{device}")
-    print(f"Encoder : {ENCODER_NAME} | run tag : {RUN_TAG}")
+    print(f"Model : {SEGFORMER_CKPT} | run tag : {RUN_TAG}")
 
     #get data set and check dtype and length
     train_ds, val_ds, test_ds = getDataSet()
@@ -491,16 +504,18 @@ def main():
     print(f"Mask : {sample['mask'].shape} dtype : {sample['mask'].dtype}")
     print(f"Mask value : {sample['mask'].unique().tolist()}")
 
-    train_dl = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True, num_workers=2)
-    val_dl = DataLoader(val_ds, batch_size=BATCH_SIZE, shuffle=False, num_workers=2)
+    #light loaders only used here for the sanity check and the evaluation
+    #(the training loaders with persistent workers are created inside seg_finetune)
+    check_dl = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True, num_workers=0)
+    val_dl = DataLoader(val_ds, batch_size=BATCH_SIZE, shuffle=False, num_workers=NUM_WORKERS_VAL)
 
-    batch = next(iter(train_dl))
+    batch = next(iter(check_dl))
     print(f"\nbatch image : {batch['image'].shape}")
     print(f"batch mask : {batch['mask'].shape}")
 
     while True:
 
-        print("---Love DA U-Net fine tuning---")
+        print("---Love DA SegFormer fine tuning---")
         print("1: fine tune model")
         print("2: visualize pred on best val loss pth")
         print("3: evaluate confusion on best val loss pth")
@@ -510,7 +525,7 @@ def main():
 
         if choice == 1:
             #training
-            unet_finetune(train_ds, val_ds, device)
+            seg_finetune(train_ds, val_ds, device)
 
         elif choice == 2:
             model = load_best_model(device)
