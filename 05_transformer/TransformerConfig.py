@@ -1,11 +1,13 @@
+from pathlib import Path
+
 import os
 from dataclasses import dataclass
 
 SEED = 33
 
 #paths
-DATA_DIR = "./data"
-CHECKPOINT_DIR = "./checkpoints"
+DATA_DIR = str(Path(__file__).resolve().parent / "data")
+CHECKPOINT_DIR = str(Path(__file__).resolve().parent / "checkpoints")
 TOKENIZER_PATH = os.path.join(DATA_DIR, "tokenizer.json")
 TRAIN_BIN = os.path.join(DATA_DIR, "train.bin")
 VAL_BIN = os.path.join(DATA_DIR, "val.bin")

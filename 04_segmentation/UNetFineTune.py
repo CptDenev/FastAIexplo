@@ -1,3 +1,6 @@
+from pathlib import Path
+DATA = Path(__file__).resolve().parents[1] / "dataset"
+
 import os
 import numpy as np
 
@@ -25,8 +28,8 @@ from torchgeo.datasets import LoveDA
 
 #---Config---
 SEED = 34
-DATA_PATH = "./dataset/loveda"
-SAVE_DIR = "./checkpoints"
+DATA_PATH = str(DATA / "loveda")
+SAVE_DIR = str(Path(__file__).resolve().parent / "checkpoints")
 
 #---Fine tuning config---
 ENCODER_NAME = "resnet34"    # ImageNet pretrained encoder (smp)

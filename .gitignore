@@ -198,3 +198,7 @@ __pycache__/
 *.pkl
 .venv/
 runs/
+checkpoints/
+data/
+tokenizer/
+mnist_data/

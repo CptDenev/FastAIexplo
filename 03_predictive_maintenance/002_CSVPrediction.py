@@ -1,3 +1,6 @@
+from pathlib import Path
+DATA = Path(__file__).resolve().parents[1] / "dataset"
+
 #from fastai.vision.all import *
 
 import pandas as pd
@@ -99,7 +102,7 @@ def train_model(epochs, lr, n_coeff, trn_indep, trn_dep):
 
 def main():
     #get csv and basic cleanup
-    df = dldat('ai4i2020.csv', 'dataset')
+    df = dldat('ai4i2020.csv', str(DATA))
     df = dataclean(df)
 
     #check data summary

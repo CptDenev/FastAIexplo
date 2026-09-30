@@ -1,3 +1,6 @@
+from pathlib import Path
+DATA = Path(__file__).resolve().parents[1] / "dataset"
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -134,8 +137,8 @@ def main():
     EPOCHS = 20
     LR = 1e-3
     PATIENCE = 5
-    DATA_DIR = "./dataset/mnist"
-    SAVE_DIR = "./checkpoints"
+    DATA_DIR = str(DATA / "mnist")
+    SAVE_DIR = str(Path(__file__).resolve().parent / "checkpoints")
     os.makedirs(SAVE_DIR, exist_ok=True)
 
     #Load MNIST and convert to tensor

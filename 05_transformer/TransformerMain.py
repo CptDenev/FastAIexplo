@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import os
 import math
 import numpy as np
@@ -7,9 +9,9 @@ import torch
 
 #--- Config ---
 SEED = 33
-DATA_PATH = "./data"
-SAVE_PATH = "./checkpoints"
-TOKENIZER_PATH = "./tokenizer"
+DATA_PATH = str(Path(__file__).resolve().parent / "data")
+SAVE_PATH = str(Path(__file__).resolve().parent / "checkpoints")
+TOKENIZER_PATH = str(Path(__file__).resolve().parent / "tokenizer")
 
 
 #--- Device detection ---

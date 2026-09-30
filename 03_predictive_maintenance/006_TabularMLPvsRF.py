@@ -1,3 +1,6 @@
+from pathlib import Path
+DATA = Path(__file__).resolve().parents[1] / "dataset"
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -15,8 +18,8 @@ import math
 
 # --Config--
 SEED = 33
-DATA_PATH = "./dataset/ai4i2020.csv"
-SAVE_DIR = "./checkpoints"
+DATA_PATH = str(DATA / "ai4i2020.csv")
+SAVE_DIR = str(Path(__file__).resolve().parent / "checkpoints")
 os.makedirs(SAVE_DIR, exist_ok=True)
 
 FEATURES=[

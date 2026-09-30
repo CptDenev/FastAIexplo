@@ -1,3 +1,6 @@
+from pathlib import Path
+DATA = Path(__file__).resolve().parents[1] / "dataset"
+
 import pandas as pd
 import torch, torch.nn as nn
 import numpy as np
@@ -6,7 +9,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import classification_report, roc_auc_score, precision_recall_curve
 
 # --- Data loading ---
-path = 'dataset'
+path = str(DATA)
 file = "ai4i2020.csv"
 fullpath = path + '/' + file
 

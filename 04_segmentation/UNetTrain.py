@@ -1,3 +1,6 @@
+from pathlib import Path
+DATA = Path(__file__).resolve().parents[1] / "dataset"
+
 import os
 import numpy as np
 
@@ -25,8 +28,8 @@ from torchgeo.datasets import LoveDA
 
 #---Config---
 SEED = 33
-DATA_PATH = "./dataset/loveda"
-SAVE_DIR="./checkpoints"
+DATA_PATH = str(DATA / "loveda")
+SAVE_DIR=str(Path(__file__).resolve().parent / "checkpoints")
 
 #class name from LOveDA ds
 CLASS_NAME =[
@@ -347,7 +350,7 @@ def visualize_pred(model, dataset, device, n_samples=4):
     fig.legend(handles=legend_elements, loc='lower center', ncol=4)
 
     plt.tight_layout()
-    plt.savefig("./checkpoints/predictions", dpi=100)
+    plt.savefig(os.path.join(SAVE_DIR, "predictions"), dpi=100)
     plt.show()
 
 
@@ -392,7 +395,7 @@ def plot_confusion(cm, class_names, ignore_index):
     plt.xlabel("Predicted")
     plt.ylabel("True")
     plt.title("Normalized confusion matrix")
-    plt.savefig("./checkpoints/confusion_matrix.png", dpi=100)
+    plt.savefig(os.path.join(SAVE_DIR, "confusion_matrix.png"), dpi=100)
     plt.show()
 
 
