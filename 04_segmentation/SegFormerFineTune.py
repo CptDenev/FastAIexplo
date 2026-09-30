@@ -91,7 +91,8 @@ def getDevice():
 
 
 def getDataSet():
-    #train : augmented / val + test : deterministic (resize only)
+    # note : the published fine-tuning runs were trained with make_transform_val on train
+    # (no augmentation), a mix-up fixed afterwards. See README.
     train_ds = LoveDA(root=DATA_PATH, split="train", download=True, transforms=make_transform)
     val_ds = LoveDA(root=DATA_PATH, split="val", download=True, transforms=make_transform_val)
     test_ds = LoveDA(root=DATA_PATH, split="test", download=True, transforms=make_transform_val)

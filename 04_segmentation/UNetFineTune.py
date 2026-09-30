@@ -90,9 +90,11 @@ def getDevice():
 
 
 def getDataSet():
-    train_ds = LoveDA(root=DATA_PATH, split="train", download=True, transforms=make_transform_val)
+    # note : the published fine-tuning runs were trained with make_transform_val on train
+    # (no augmentation), a mix-up fixed afterwards. See README.
+    train_ds = LoveDA(root=DATA_PATH, split="train", download=True, transforms=make_transform)
     val_ds = LoveDA(root=DATA_PATH, split="val", download=True, transforms=make_transform_val)
-    test_ds = LoveDA(root=DATA_PATH, split="test", download=True, transforms=make_transform)
+    test_ds = LoveDA(root=DATA_PATH, split="test", download=True, transforms=make_transform_val)
 
     #train_subset = Subset(train_ds, range(600))
     #val_subset = Subset(val_ds, range(300))
@@ -276,7 +278,7 @@ def get_tversky_weights(num_classes, class_name, device):
     alpha[idx_barren] = 0.6
     beta[idx_barren] = 0.4
 
-    # road, water : let BG appear (barren stays neutral 0.5/0.5)
+    # road, water : recall-oriented, let them expand over BG
     for name in ["road", "water"]:
         idx = class_name.index(name)
         alpha[idx] = 0.4
