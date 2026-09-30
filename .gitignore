@@ -189,3 +189,12 @@ dataset/mnist
 dataset/loveda
 test_digits/
 data/
+dataset/*
+!dataset/ai4i2020.csv
+__pycache__/
+*.pyc
+*.pth
+*.pt
+*.pkl
+.venv/
+runs/
