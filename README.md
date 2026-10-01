@@ -17,7 +17,7 @@
 | [01_fundamentals](01_fundamentals) | MNIST digits, regression basics | MLP, 2×(Conv-Pool) CNN + 2×FC | MNIST | 1.6 MB | ✅ CNN deployed on [HF Space](https://huggingface.co/spaces/CptDenev/MNIST_Digit_CNN) |
 | [02_image_classification](02_image_classification) | Room recognition | ResNet18 fine-tuned (fastai) | Photos taken on site | 45 MB | ✅ Deployed on [HF Space](https://huggingface.co/spaces/CptDenev/Conciergerie) |
 | [03_predictive_maintenance](03_predictive_maintenance) | Machine failure prediction | MLP vs Random Forest | AI4I 2020 | 2.6 MB | ✅ |
-| [04_segmentation](04_segmentation) | Land-cover segmentation | U-Net from scratch vs pretrained encoder | LoveDA | — | 🚧 Post-mortem and deployment in progress |
+| [04_segmentation](04_segmentation) | Land-cover segmentation | U-Net from scratch vs pretrained encoder | LoveDA | 118 MB | 🚧 Deployment in progress |
 | [05_transformer](05_transformer) | Small language model from scratch | Decoder-only transformer | TinyStories | — | 🚧 |
 
 **Next**: synthetic training data generated in Unreal Engine 5 for segmentation, measuring the gap between synthetic and real images (separate repository).
