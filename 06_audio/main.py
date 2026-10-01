@@ -10,6 +10,7 @@ DEFAULT_MODEL = "whisper-small"
 RECORDS_DIR = Path(__file__).resolve().parent / "Records"
 
 
+#allow to pick a label from an option list and return it
 def pick(options, label):
     for i, opt, in enumerate(options, 1):
         print(f"{i}. {opt}")
@@ -57,7 +58,7 @@ def main():
         
         match choice:
             case 1:
-                session = pick(list_session(), "session") or session
+                session = pick(list_sessions(), "session") or session
             
             case 2:
                 #add_noise(RECORDS_DIR / session)
