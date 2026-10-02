@@ -1,7 +1,10 @@
 import json
 import sys
 from pathlib import Path
+import subprocess
+import tempfile
 
+import imageio_ffmpeg
 import librosa
 import numpy as np
 import soundfile as sf
@@ -18,6 +21,7 @@ RADIO_BAND = (300, 3400)
 PEAK_MAX = 0.99  # peak normalization target, avoids clipping after mixing
 SILENCE_TOP_DB = 40  # threshold used to ignore silences when measuring speech power
 
+NATIVE_EXT = {".wav", ".flac"}  # read directly by soundfile, no decoding needed
 AUDIO_EXT = {".wav", ".m4a", ".mp3", ".aac", ".flac"}
 
 RECORD_DIR = Path(__file__).resolve().parent / "Records"
@@ -48,19 +52,34 @@ def find_source(session_dir):
     return candidates[0]
 
 
+#Decode compressed audio to float32 WAV at native rate, with the bundled ffmpeg.
+def decode_to_wav(src, dst):
+    
+    cmd = [
+        imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-loglevel", "error",
+        "-i", str(src), "-c:a", "pcm_f32le", str(dst),
+    ]
+    subprocess.run(cmd, check=True)
+
+
 def import_recording(src, session_dir):
-    signal = load_audio(src)
-    #compute signal peak
-    peak = float(np.max(np.abs(signal)))
+    #check if conversion is needed
+    if src.suffix.lower() in NATIVE_EXT:
+        signal = load_audio(src)
+    else:
+        with tempfile.TemporaryDirectory() as tmp:
+            decoded = Path(tmp) / "decoded.wav"
+            decode_to_wav(src, decoded)
+            signal = load_audio(decoded)
 
     #display peak warning
+    peak = float(np.max(np.abs(signal)))
     if peak >= 0.999:
         print(f"warning : {src.name} peaks at {peak:.3f}, the source is probably clipped")
 
     dst = session_dir / "original.wav"
     save_audio(dst, signal)
     print(f"import {src.name} to {dst.name} ({len(signal) / SAMPLE_RATE:.1f} s, peak {peak:.2f})")
-
     return dst
 
 #---Signal processing---
