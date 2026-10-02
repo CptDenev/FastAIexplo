@@ -14,6 +14,10 @@ SEED = 33
 SNR_LEVELS = [20, 10, 5, 0]
 RADIO_SNR_LEVELS = [10, 5]
 RADIO_BAND = (300, 3400)
+
+PEAK_MAX = 0.99  # peak normalization target, avoids clipping after mixing
+SILENCE_TOP_DB = 40  # threshold used to ignore silences when measuring speech power
+
 AUDIO_EXT = {".wav", ".m4a", ".mp3", ".acc", ".flac"}
 
 RECORD_DIR = Path(__file__).resolve().parent / "Records"
@@ -60,8 +64,17 @@ def import_recording(src, sesssion_dir):
     return dst
 
 #---Signal processing---
-#radio_effect, add_white_noise
+#power, speech_power, radio_effect, add_white_noise
 
+#get mean signal power
+def power(x):
+    return float(np.mean(x ** 2))
+
+#compute power by removing silence which would decreades the mean power value if considered
+def speech_power(signal):
+    intervals = librosa.effects.split(signal, top_db=SILENCE_TOP_DB)
+    voiced = np.concatenate([signal[s:e] for s, e in intervals])
+    return power(voiced)
 
 #bandpass filter as defined in RADIO_BAND (300-3400Hz)
 def radio_effect(signal):
@@ -77,8 +90,20 @@ def add_white_noise(voice, snr_db, rng, radio=False):
     if radio:
         noise = radio_effect(noise)
 
+    #compute voice power and tune noise according to voice power
+    p_voice = speech_power(voice)
+    p_noise_target = p_voice / 10 ** (snr_db / 10)
+    noise *= np.sqrt(p_noise_target / power(noise))
 
+    #compute SNR and mix voice + noise
+    snr_measured = 10 * np.log10(p_voice / power(noise))
+    mixed = voice + noise
 
+    #compute peak and clip gain if peak reach PEAK_MAX
+    peak = float(np.max(np.abs(mixed)))
+    gain = PEAK_MAX / peak if peak > PEAK_MAX else 1.0
+
+    return (mixed*gain).astype(np.float32), snr_measured, gain
 
 
 #---Add noise for Main---
@@ -102,9 +127,36 @@ def add_noise(session_dir):
     log = []
 
     for snr, radio in conditions:
-        pass
+        #get randome from SEED for reproductibility
+        rng = np.random.default_rng([SEED, snr, int(radio)])
+        voice = radio_effect(signal) if radio else signal
+        mixed, snr_measured, gain = add_white_noise(voice, snr, rng, radio)
 
+        #save file
+        name = f"{'radio' if radio else ''}snr{snr}.wav"
+        save_audio(noisy_dir / name, mixed)
 
+        #logs
+        log.append([
+            "file": name,
+            "snr_target_db": snr,
+            "snr_measured_db": round(snr_measured, 2),
+            "radio": radio,
+            "gain": round(gain, 4),
+            "seed": [SEED, snr, int(radio)],
+        ])
+        print(f"{name:<18} target {snr:>3} dB | measured {snr_measured:6.2f} dB | gain {gain:.3f}")
+
+    #get global values
+    meta = {
+        "sample_rate": SAMPLE_RATE,
+        "radio_band_hz": RADIO_BAND,
+        "silence_top_db": SILENCE_TOP_DB,
+        "conditions": log, 
+    }
+    #save log file
+    (noisy_dir / "conditions.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
+    return log
 
 
 #---Dunder secu and tests---
