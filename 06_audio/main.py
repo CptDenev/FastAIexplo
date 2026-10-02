@@ -10,7 +10,7 @@ DEFAULT_MODEL = "whisper-small"
 RECORDS_DIR = Path(__file__).resolve().parent / "Records"
 
 
-#allow to pick a label from an option list and return it
+#allow to pick a label from an option list and return it, choices starts at 1 for non dev people
 def pick(options, label):
     for i, opt, in enumerate(options, 1):
         print(f"{i}. {opt}")

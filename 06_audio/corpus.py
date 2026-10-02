@@ -18,7 +18,7 @@ RADIO_BAND = (300, 3400)
 PEAK_MAX = 0.99  # peak normalization target, avoids clipping after mixing
 SILENCE_TOP_DB = 40  # threshold used to ignore silences when measuring speech power
 
-AUDIO_EXT = {".wav", ".m4a", ".mp3", ".acc", ".flac"}
+AUDIO_EXT = {".wav", ".m4a", ".mp3", ".aac", ".flac"}
 
 RECORD_DIR = Path(__file__).resolve().parent / "Records"
 
@@ -48,7 +48,7 @@ def find_source(session_dir):
     return candidates[0]
 
 
-def import_recording(src, sesssion_dir):
+def import_recording(src, session_dir):
     signal = load_audio(src)
     #compute signal peak
     peak = float(np.max(np.abs(signal)))
@@ -57,9 +57,9 @@ def import_recording(src, sesssion_dir):
     if peak >= 0.999:
         print(f"warning : {src.name} peaks at {peak:.3f}, the source is probably clipped")
 
-    dst = sesssion_dir / "original.wav"
+    dst = session_dir / "original.wav"
     save_audio(dst, signal)
-    print(f"import {src.name} to {dst.name} ({len(signal) / SR:.1f} s, peak {peak:.2f})")
+    print(f"import {src.name} to {dst.name} ({len(signal) / SAMPLE_RATE:.1f} s, peak {peak:.2f})")
 
     return dst
 
@@ -99,7 +99,7 @@ def add_white_noise(voice, snr_db, rng, radio=False):
     snr_measured = 10 * np.log10(p_voice / power(noise))
     mixed = voice + noise
 
-    #compute peak and clip gain if peak reach PEAK_MAX
+    #compute peak and normalize gain if peak reach PEAK_MAX
     peak = float(np.max(np.abs(mixed)))
     gain = PEAK_MAX / peak if peak > PEAK_MAX else 1.0
 
@@ -133,18 +133,18 @@ def add_noise(session_dir):
         mixed, snr_measured, gain = add_white_noise(voice, snr, rng, radio)
 
         #save file
-        name = f"{'radio' if radio else ''}snr{snr}.wav"
+        name = f"{'radio_' if radio else ''}snr{snr}.wav"
         save_audio(noisy_dir / name, mixed)
 
         #logs
-        log.append([
+        log.append({
             "file": name,
             "snr_target_db": snr,
             "snr_measured_db": round(snr_measured, 2),
             "radio": radio,
             "gain": round(gain, 4),
             "seed": [SEED, snr, int(radio)],
-        ])
+        })
         print(f"{name:<18} target {snr:>3} dB | measured {snr_measured:6.2f} dB | gain {gain:.3f}")
 
     #get global values
@@ -162,8 +162,19 @@ def add_noise(session_dir):
 #---Dunder secu and tests---
 
 def main():
-    #tests go here
-    pass
+    if len(sys.argv) != 2:
+        print("usage: python corpus.py <session_name>")
+        sys.exit(1)
+    session_dir = RECORD_DIR / sys.argv[1]
+    add_noise(session_dir)  # creates original.wav if needed
+
+    signal = load_audio(session_dir / "original.wav")
+    intervals = librosa.effects.split(signal, top_db=SILENCE_TOP_DB)
+    mask = np.ones(len(signal), dtype=bool)
+    for s, e in intervals:
+        mask[s:e] = False
+    native_snr = 10 * np.log10(speech_power(signal) / power(signal[mask]))
+    print(f"native SNR ~ {native_snr:.1f} dB")
 
 if __name__ == '__main__':
     main()

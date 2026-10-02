@@ -1,0 +1,82 @@
+{
+  "sample_rate": 16000,
+  "radio_band_hz": [
+    300,
+    3400
+  ],
+  "silence_top_db": 40,
+  "conditions": [
+    {
+      "file": "snr20.wav",
+      "snr_target_db": 20,
+      "snr_measured_db": 20.0,
+      "radio": false,
+      "gain": 1.0,
+      "seed": [
+        33,
+        20,
+        0
+      ]
+    },
+    {
+      "file": "snr10.wav",
+      "snr_target_db": 10,
+      "snr_measured_db": 10.0,
+      "radio": false,
+      "gain": 1.0,
+      "seed": [
+        33,
+        10,
+        0
+      ]
+    },
+    {
+      "file": "snr5.wav",
+      "snr_target_db": 5,
+      "snr_measured_db": 5.0,
+      "radio": false,
+      "gain": 1.0,
+      "seed": [
+        33,
+        5,
+        0
+      ]
+    },
+    {
+      "file": "snr0.wav",
+      "snr_target_db": 0,
+      "snr_measured_db": 0.0,
+      "radio": false,
+      "gain": 1.0,
+      "seed": [
+        33,
+        0,
+        0
+      ]
+    },
+    {
+      "file": "radio_snr10.wav",
+      "snr_target_db": 10,
+      "snr_measured_db": 10.0,
+      "radio": true,
+      "gain": 1.0,
+      "seed": [
+        33,
+        10,
+        1
+      ]
+    },
+    {
+      "file": "radio_snr5.wav",
+      "snr_target_db": 5,
+      "snr_measured_db": 5.0,
+      "radio": true,
+      "gain": 1.0,
+      "seed": [
+        33,
+        5,
+        1
+      ]
+    }
+  ]
+}
