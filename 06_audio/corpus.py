@@ -52,7 +52,7 @@ def find_source(session_dir):
     return candidates[0]
 
 
-#Decode compressed audio to float32 WAV at native rate, with the bundled ffmpeg.
+#Decode compressed audio to float32 WAV at native rate, with the bundled ffmpeg / avoid bad PATH configuration
 def decode_to_wav(src, dst):
     
     cmd = [
@@ -77,6 +77,7 @@ def import_recording(src, session_dir):
     if peak >= 0.999:
         print(f"warning : {src.name} peaks at {peak:.3f}, the source is probably clipped")
 
+    #save audio file as original.wav
     dst = session_dir / "original.wav"
     save_audio(dst, signal)
     print(f"import {src.name} to {dst.name} ({len(signal) / SAMPLE_RATE:.1f} s, peak {peak:.2f})")

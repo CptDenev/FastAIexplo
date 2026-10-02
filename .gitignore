@@ -202,3 +202,4 @@ checkpoints/
 data/
 tokenizer/
 mnist_data/
+06_audio/.venv/
