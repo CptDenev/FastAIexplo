@@ -14,7 +14,7 @@ RECORD_DIR = Path(__file__).resolve().parent / "Records"
 #numbers with at least this many digits are read digit by digit (radio procedure for coordinates)
 DIGIT_BY_DIGIT_MIN = 3
 
-TIME_RE = re.compile(r"\b(\d{1,2})\s*h\s*(\d{2})?\b")    # 14h20, 16h, 14 h 20
+TIME_RE = re.compile(r"\b(\d{1,2})\s*h(?:\s*(\d{2}))?\b")    # 14h20, 16h, 14 h 20
 PERCENT_RE = re.compile(r"(\d+)\s*%")                    # 60%, 60 %
 KM_RE = re.compile(r"(\d+)\s*km\b")                      # 2 km, 2km
 DIGIT_HYPHEN_RE = re.compile(r"(?<=\d)-(?=\d)")          # 452-871, 4-5-2
@@ -71,31 +71,98 @@ def normalize(text):
 
 #---Metrics---
 
-def wer_details(ref, hyp):
-    pass
+#Word Error Count (WER) on normalized string
+def wer_detail(ref, hyp):
+    if not hyp:
+        n = len(ref.split())
+        return {"wer": 1.0, "sub": 0, "del": n, "ins": 0}
+    out = jiwer.process_words(ref, hyp)
+    return {"wer": out.wer, "sub": out.substitutions, "del": out.deletions, "ins": out.insertions}
 
-def load_keaywords(path):
-    pass
+
+#One keyword per line, written variants separated by | (first one is the label).
+def load_keywords(path):
+    keywords = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            variants = [v.strip() for v in line.split("|")]
+            keywords.append((variants[0], [normalize(v) for v in variants]))
+    return keywords
 
 def keyword_hits(hyp, keywords):
-    pass
+    #padding so a keyword only matches whole words
+    padded = f" {hyp} "  
+    found, missed = [], []
+    for label, variants in keywords:
+        hit = any(f" {v} " in padded for v in variants)
+        (found if hit else missed).append(label)
+    return found, missed
 
+#original -> clean, snr10 -> 10, radio_snr5 -> 5 with radio
 def parse_condition(stem):
-    pass
+    if stem == "original":
+        return "clean", None, False
+    radio = stem.startswith("radio_")
+    snr = int(stem.removeprefix("radio_").removeprefix("snr"))
+    return stem, snr, radio
 
 #---Session scoring---
 
 def score_session(session_dir, plot_snr=5, plot_device="cuda"):
-    pass
+    session_dir = Path(session_dir)
+    ref = normalize((session_dir / "ground_truth.txt").read_text(encoding="utf-8"))
+    keywords = load_keywords(session_dir / "keywords.txt")
+ 
+    rows = []
+    for json_path in sorted((session_dir / "transcripts").glob("*/*.json")):
+        data = json.loads(json_path.read_text(encoding="utf-8"))
+        hyp = normalize(data["text"])
+        w = wer_detail(ref, hyp)
+        found, missed = keyword_hits(hyp, keywords)
+        condition, snr, radio = parse_condition(Path(data["file"]).stem)
+        rows.append({
+            "model": data["model"],
+            "params_m": data.get("params_m"),
+            "device": data.get("device"),
+            "condition": condition,
+            "snr_db": snr,
+            "radio": radio,
+            "wer": round(w["wer"], 4),
+            "sub": w["sub"],
+            "del": w["del"],
+            "ins": w["ins"],
+            "kw_recall": round(len(found) / len(keywords), 4),
+            "kw_missed": ";".join(missed),
+            "latency_s": data.get("latency_s"),
+            "rtf": data.get("rtf"),
+        })
+ 
+    if not rows:
+        print(f"no transcripts found in {session_dir / 'transcripts'}")
+        return []
+ 
+    with open(session_dir / "results.csv", "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+ 
+    for r in rows:
+        print(f"{r['model']:<16} {r['device']:<5} {r['condition']:<12} "
+              f"WER {r['wer'] * 100:5.1f}% | keywords {r['kw_recall'] * 100:5.1f}%")
+ 
+    # accuracy does not depend on the device, plots use a single one to avoid duplicates
+    plot_rows = [r for r in rows if r["device"] == plot_device] or rows
+    plot_vs_snr(plot_rows, session_dir / "wer_keywords_vs_snr.png")
+    plot_vs_size(plot_rows, plot_snr, session_dir / f"keywords_vs_size_snr{plot_snr}.png")
+    return rows
 
 #---Plots---
 
 def _cond_key(row):
     return "clean" if row["snr_db"] is None else row["snr_db"]
  
- 
+#WER and keyword recall vs SNR, one color per model, dashed = radio effect.
 def plot_vs_snr(rows, out_path):
-    """WER and keyword recall vs SNR, one color per model, dashed = radio effect."""
     pos = {c: i for i, c in enumerate(SNR_ORDER)}
     models = sorted({r["model"] for r in rows}, key=lambda m: next(
         (r["params_m"] or 0) for r in rows if r["model"] == m))
@@ -127,9 +194,10 @@ def plot_vs_snr(rows, out_path):
     plt.close(fig)
     print(f"saved {out_path.name}")
  
- 
+
+#Keyword recall vs model size at a fixed SNR (white noise only).
 def plot_vs_size(rows, snr, out_path):
-    """Keyword recall vs model size at a fixed SNR (white noise only)."""
+    
     sel = sorted(
         (r for r in rows if r["snr_db"] == snr and not r["radio"] and r["params_m"]),
         key=lambda r: r["params_m"],
@@ -155,8 +223,18 @@ def plot_vs_size(rows, snr, out_path):
     print(f"saved {out_path.name}")
 
 #---Manual check---
+
+#Normalize one raw transcript and show the alignment against the reference.
 def check(session_dir, text):
-    pass
+    ref = normalize((session_dir / "ground_truth.txt").read_text(encoding="utf-8"))
+    hyp = normalize(text)
+    keywords = load_keywords(session_dir / "keywords.txt")
+
+    print(f"REF : {ref}\nHYP : {hyp}\n")
+    if hyp:
+        print(jiwer.visualize_alignment(jiwer.process_words(ref, hyp)))
+    found, missed = keyword_hits(hyp, keywords)
+    print(f"keywords {len(found)}/{len(keywords)} | missed: {', '.join(missed) or 'none'}")
 
 #---Dunder secu and tests---
 def main():
