@@ -37,7 +37,7 @@ def main():
     
     while True :
         print("\n---Small model voice detection under radio like noise---")
-        print(f"session : {session or 'none'} | model : {model}")
+        print(f"session : {session or 'none'} | model : {model} | device : {device}")
         print("1. choose a session")
         print("2. add noise to choosen session")
         print("3. choose transcription model")
@@ -47,7 +47,7 @@ def main():
         print("0. quit")
         
         try:
-            choice = int(input("enter your choice :"))
+            choice = int(input("enter your choice : "))
         except ValueError:
             print("please enter a number")
             continue
