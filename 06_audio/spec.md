@@ -98,6 +98,19 @@ The rules and `keywords.txt` were checked on the clean transcripts of the three 
       results.csv
       *.png
 ```
+## Architecture
+
+```mermaid
+flowchart TD
+    main[main.py<br/>CLI menu] --> corpus & run & metrics
+    corpus[corpus.py<br/>import, noise, radio] --> wav[(original + noisy wav)]
+    wav --> run[run.py<br/>transcribe and time]
+    run --> models[models.py<br/>adapters, registry]
+    run --> json[(transcripts/*.json)]
+    json --> metrics[metrics.py<br/>WER, keywords, plots]
+    metrics --> out[(results.csv + plots)]
+```
+
 
 ## Limits
 
@@ -106,6 +119,8 @@ One speaker, one message, one take. The results show a trend on this message, th
 ## Out of scope (v2)
 
 - A Qwen text model that corrects the raw transcript using the domain vocabulary and extracts a structured JSON (call sign, order, coordinates).
+- Context or hotwords given to the ASR model to bias it towards the radio vocabulary.
 - Real recorded noise (engine, wind) instead of white noise.
 - Streaming transcription.
 - int8 quantization.
+- Explore newer models like Whistle

@@ -1,3 +1,7 @@
+"""
+metrics : WER (world error rate), keywrods, plots
+"""
+
 import csv
 import json
 import re

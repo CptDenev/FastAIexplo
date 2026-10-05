@@ -1,3 +1,7 @@
+"""
+run : transcribe, measure time and save json files
+"""
+
 import json
 import sys
 import time
@@ -63,7 +67,7 @@ def run_session(session_dir, model_name, device=None):
             "rtf": round(latency_s / audio_s, 4),
             "load_s": round(load_s, 1),
             "params_m": MODELS[model_name]["params_m"],
-            # approximate, device-wide; None on CPU for now
+            # approximate, device-wide, None on CPU for now
             "gpu_mem_mb": round(gpu_used_mb() - baseline_mb) if device == "cuda" else None,
         }
         out_path = out_dir / f"{path.stem}.{device}.json"
@@ -73,7 +77,7 @@ def run_session(session_dir, model_name, device=None):
     return out_dir
 
 
-
+#---Dunder secu and tests---
 def main():
     if len(sys.argv) not in (3,4):
         print("usage: python run.py <session> <model_name> [cpu|cuda]")

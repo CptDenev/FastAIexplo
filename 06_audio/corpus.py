@@ -1,3 +1,7 @@
+"""
+corpus : import recorded file, add noise, add radio effects, save altered files
+"""
+
 import json
 import sys
 from pathlib import Path

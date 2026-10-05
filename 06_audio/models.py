@@ -1,3 +1,7 @@
+"""
+models: adapter and model registery
+"""
+
 import sys
 import time
 
@@ -7,7 +11,6 @@ import soundfile as sf
 #---Device check---
 def default_device():
     return "cuda" if torch.cuda.is_available() else "cpu"
-
 
 
 #---Adaptaters---
