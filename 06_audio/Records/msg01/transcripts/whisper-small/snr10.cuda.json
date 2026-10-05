@@ -3,10 +3,10 @@
   "file": "snr10.wav",
   "text": "Tando 2, ici Charlie, message de situation. J'aurais peut-être message de situation. Position actuelle au point de ligne 31 uniforme, Delta T-Bake 452871. Trois véhicules blindés observés en direction de reste, distance environ 2 km. Un drone a perçu au-dessus de la crête à 14h20. Aucun me laissé, une mission à 60%. On met maintenant la position jusqu'à 16h, puis on plie vers le point de regroupement. Bravo ! Demande à appuyer observation sur la crête. Allez !",
   "device": "cuda",
-  "latency_s": 1.226,
+  "latency_s": 1.307,
   "audio_s": 30.36,
-  "rtf": 0.0404,
-  "load_s": 1.9,
+  "rtf": 0.0431,
+  "load_s": 2.6,
   "params_m": 244,
-  "gpu_mem_mb": 658
+  "gpu_mem_mb": 656
 }

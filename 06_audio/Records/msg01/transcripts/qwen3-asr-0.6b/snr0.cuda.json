@@ -3,10 +3,10 @@
   "file": "snr0.wav",
   "text": "Chambaud de Piscary, message de situation, alerte, message de situation actuelle au point de vue tranquillant uniforme, Belca, télévision militaire, 17, position blindée observée en direction de l'axe, environ 200 mètres, un drone aperçu au pied de la crête à 400 mètres, aucun blessé, mission à 80%. Mettons la position de casseurs qui ont tiré le point de bombardement Bravo, demandez le service action sur la crête, comment le recel par les.",
   "device": "cuda",
-  "latency_s": 6.955,
+  "latency_s": 7.101,
   "audio_s": 30.36,
-  "rtf": 0.2291,
-  "load_s": 25.5,
+  "rtf": 0.2339,
+  "load_s": 4.1,
   "params_m": 600,
-  "gpu_mem_mb": 2112
+  "gpu_mem_mb": 10
 }

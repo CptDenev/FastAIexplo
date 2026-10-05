@@ -3,10 +3,10 @@
   "file": "original.wav",
   "text": "Tango 2 ici Charlie, message de situation. Je répète, message de situation. Position actuelle au point de Grille 31 uniforme, Delta Quebec 452-871. Trois véhicules blindés observés en direction de reste, distance environ 2 km. Un drone aperçu au-dessus de la crête à 14h20. Aucun bel essai, munition à 60%. Donc maintenant, la position jusqu'à 16h, puis repliver le point de regroupe mon bravo. Demande appuyer observation sur la crête. Comment me recevez-vous? Parlez.",
   "device": "cuda",
-  "latency_s": 0.684,
+  "latency_s": 0.687,
   "audio_s": 30.36,
-  "rtf": 0.0225,
-  "load_s": 3.4,
+  "rtf": 0.0226,
+  "load_s": 0.4,
   "params_m": 74,
-  "gpu_mem_mb": 242
+  "gpu_mem_mb": 232
 }

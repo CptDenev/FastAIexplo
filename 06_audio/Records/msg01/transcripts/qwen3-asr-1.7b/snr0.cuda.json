@@ -3,10 +3,10 @@
   "file": "snr0.wav",
   "text": "Sangue de six carabins. Message de situation. Je répète, message de situation actuelle. Point de vue trente et un mille quarante quatre. Delta C B quatre cent deux six un. Trois véhicules blindés observés. On ne reste plus cent vingt deux kilomètres. Un drone a perçu le côté de la crête à quatre heures vingt. Aucun blessé. Munitions à soixante pour cent. On note son position jusqu'à seize heures. Il récupère le point de remontage. Demande des observations sur la crête. Trois membres reçus par les.",
   "device": "cuda",
-  "latency_s": 7.845,
+  "latency_s": 7.592,
   "audio_s": 30.36,
-  "rtf": 0.2584,
-  "load_s": 11.6,
+  "rtf": 0.2501,
+  "load_s": 14.5,
   "params_m": 1700,
   "gpu_mem_mb": 4622
 }

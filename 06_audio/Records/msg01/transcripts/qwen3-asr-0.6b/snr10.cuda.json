@@ -3,10 +3,10 @@
   "file": "snr10.wav",
   "text": "Tango 2 ici Charlie message de situation je répète message de situation position actuelle au point de vue 31 uniforme Delta Kite 452 871 trois véhicules blindés observés en direction de Rest distance environ 2 km un drone a perçu au-dessus de la crête à 14h20 aucun blessé mission à 60% on met maintenant la position jusqu'à 16h puis on clignote le point de regroupement Bravo demande appuyer observation sur la crête comment recevez-vous aller",
   "device": "cuda",
-  "latency_s": 6.633,
+  "latency_s": 6.594,
   "audio_s": 30.36,
-  "rtf": 0.2185,
-  "load_s": 25.5,
+  "rtf": 0.2172,
+  "load_s": 4.1,
   "params_m": 600,
-  "gpu_mem_mb": 2112
+  "gpu_mem_mb": 10
 }

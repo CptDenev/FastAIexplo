@@ -3,10 +3,10 @@
   "file": "snr5.wav",
   "text": "Cando de ici Charlie, message de situation. Je répète, message de situation. Position actuelle au point de mille trente et un, unité par mètre, delta, delta, quatre cent deux, huit sept. Trois véhicules blindés observés en direction de l'est, distance environ deux kilomètres. Un drone aperçu au-dessus de la crête à quatorze heures vingt. Aucun blessé. Munitions à soixante pour cent. Maintenant la position jusqu'à seize heures. Qui encliquer le point de remboursement, Bravo. Demande à appuyer observation sur la crête. Commande reçue. Parlez.",
   "device": "cuda",
-  "latency_s": 8.744,
+  "latency_s": 8.497,
   "audio_s": 30.36,
-  "rtf": 0.288,
-  "load_s": 11.6,
+  "rtf": 0.2799,
+  "load_s": 14.5,
   "params_m": 1700,
   "gpu_mem_mb": 4622
 }

@@ -3,10 +3,10 @@
   "file": "radio_snr10.wav",
   "text": "Pandou 2 qui charlie message de situation je répète message de situation position actuelle au point d'origine 31 uniforme delta t 8 42 87 un véhicule blindé observé en direction nord distance environ 2 km un drone a perçu au-dessus de la crête à 14h20 aucun blessé mission à 60% on mettait la position jusqu'à 16h puis on tire le point de rebondment Bravo demande appui observation sur la crête comment vous recevez vous parlez",
   "device": "cuda",
-  "latency_s": 6.637,
+  "latency_s": 6.681,
   "audio_s": 30.36,
-  "rtf": 0.2186,
-  "load_s": 25.5,
+  "rtf": 0.2201,
+  "load_s": 4.1,
   "params_m": 600,
-  "gpu_mem_mb": 2112
+  "gpu_mem_mb": 10
 }

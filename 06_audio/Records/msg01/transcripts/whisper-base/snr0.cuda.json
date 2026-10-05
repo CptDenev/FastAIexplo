@@ -3,10 +3,10 @@
   "file": "snr0.wav",
   "text": "",
   "device": "cuda",
-  "latency_s": 4.924,
+  "latency_s": 5.326,
   "audio_s": 30.36,
-  "rtf": 0.1622,
-  "load_s": 3.4,
+  "rtf": 0.1754,
+  "load_s": 0.4,
   "params_m": 74,
-  "gpu_mem_mb": 242
+  "gpu_mem_mb": 232
 }

@@ -3,10 +3,10 @@
   "file": "snr20.wav",
   "text": "Tango deux ici Charlie message de situation je répète message de situation position actuelle au point de grille trente et un uniforme Delta Québec quatre cinq deux huit sept un trois véhicules blindés observés en direction de l'ouest distance environ deux kilomètres un drone aperçu au-dessus de la crête à quatorze heures vingt aucun blessé munition à soixante pour cent donc maintenant la position jusqu'à seize heures puis au clivage le point de regroupement Bravo demande appui observation sur la crête comment recevez-vous parlez",
   "device": "cuda",
-  "latency_s": 6.691,
+  "latency_s": 6.679,
   "audio_s": 30.36,
-  "rtf": 0.2204,
-  "load_s": 25.5,
+  "rtf": 0.22,
+  "load_s": 4.1,
   "params_m": 600,
-  "gpu_mem_mb": 2112
+  "gpu_mem_mb": 10
 }
