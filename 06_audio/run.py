@@ -27,7 +27,15 @@ def gpu_used_mb():
 
 
 def run_session(session_dir, model_name, device=None):
-    pass
+    #define base variables
+    session_dir = Path(session_dir)
+    files = session_files(session_dir)
+    device = device or default_device()
+    out_dir = session_dir / "transcripts" / model_name
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    #check if gpu available
+    baseline_mb = gpu_used_mb() if device == "cuda" else None
 
 
 
