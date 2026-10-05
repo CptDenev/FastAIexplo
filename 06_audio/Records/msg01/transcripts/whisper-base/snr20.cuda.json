@@ -1,0 +1,12 @@
+{
+  "model": "whisper-base",
+  "file": "snr20.wav",
+  "text": "Tango 2 ici Charlie, message de situation, je répète, message de situation, position actuelle au point de l'île 31 uniforme, Delta T-Bike 402-871, 3 véhicules blindés observés en direction de reste, distance environ 2 km, un drone aperçu au-dessus de la crête à 14h20, aucun bel essai, d'unition à 60% donc maintenant la position jusqu'à 16h, puis en plus vers le point de regroupe mon bravo, demandez appuyer l'observation sur la crête, comment on recevez-nous, parlez",
+  "device": "cuda",
+  "latency_s": 0.732,
+  "audio_s": 30.36,
+  "rtf": 0.0241,
+  "load_s": 3.4,
+  "params_m": 74,
+  "gpu_mem_mb": 242
+}

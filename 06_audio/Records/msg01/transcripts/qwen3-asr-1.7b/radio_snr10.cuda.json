@@ -1,0 +1,12 @@
+{
+  "model": "qwen3-asr-1.7b",
+  "file": "radio_snr10.wav",
+  "text": "Cando 2 ici Charlie. Message de situation. Jeu Redhead. Message de situation. Position actuelle au point de l'unité 31 uniforme. Delta T Delta 40287. Trois véhicules blindés observés en direction de Redhead. Distance environ 2 km. Un drone aperçu au-dessus de la crête à 14h20. Aucun blessé. Munitions à 60%. Montre maintenant la position jusqu'à 16h puis enclenchez le point de regroupement Bravo. Demande à appuyer observation sur la crête. Commande reçue. Parlez.",
+  "device": "cuda",
+  "latency_s": 8.039,
+  "audio_s": 30.36,
+  "rtf": 0.2648,
+  "load_s": 11.6,
+  "params_m": 1700,
+  "gpu_mem_mb": 4622
+}

@@ -1,14 +1,14 @@
 from pathlib import Path
 
-#from corpus import add_noise
-#from models import MODELS
-#from run import run_session
-#from metrics import score_session
+from corpus import add_noise
+from models import MODELS, default_device
+from run import run_session
+from metrics import score_session
 
-MODELS = ["whisper-base", "whisper-small", "qwen3-asr-0.6b"]
+MODELS = ["whisper-base", "whisper-small", "qwen3-asr-0.6b", "qwen3-asr-1.7b"]
 DEFAULT_MODEL = "whisper-small"
 RECORDS_DIR = Path(__file__).resolve().parent / "Records"
-
+DEVICES = ["cuda", "cpu"]
 
 #allow to pick a label from an option list and return it, choices starts at 1 for non dev people
 def pick(options, label):
@@ -32,6 +32,7 @@ def list_sessions():
 def main():
 
     model = DEFAULT_MODEL
+    device = default_device()
     session = None
     
     while True :
@@ -40,8 +41,9 @@ def main():
         print("1. choose a session")
         print("2. add noise to choosen session")
         print("3. choose transcription model")
-        print("4. run model on choosen session")
-        print("5. score all models on session (WER, keyword, latency)")
+        print("4. choose device")
+        print("5. run model on session")
+        print("6. score session (WER, keyword, latency)")
         print("0. quit")
         
         try:
@@ -51,39 +53,35 @@ def main():
             continue
 
 
-        if choice in (2,4,5) and session is None:
+        if choice in (2,5,6) and session is None:
             print("choose a session first")
             continue
 
+        session_dir = RECORDS_DIR / session if session else None
         
         match choice:
             case 1:
-                session = pick(list_sessions(), "session") or session
+                sessions = list_sessions()
+                if not sessions:
+                    print(f"no session folder in {RECORDS_DIR}")
+                    continue
+                session = pick(sessions, "session") or session
             
             case 2:
-                #add_noise(RECORDS_DIR / session)
-                print('\n')
-                print(f"noise added to {session}")
-                print('\n')
+                add_noise(session_dir)
 
             case 3:
-                print('\n')
-                model = pick(MODELS, "model") or model
-                print(f"model choosen {model}")
-                print('\n')
+                model = pick(list(MODELS), "model") or model
 
             case 4:
-                #run_session(RECORDS_DIR / session, model)
-                print('\n')
-                print(f"run {model} on session : {session}")
-                print('\n')
+                device = pick(DEVICES, "device") or device
 
             case 5:
-                #score_session(RECORDS_DIR / session)
-                print('\n')
-                print("launch benchmark on all models...")
-                print('\n')
-            
+                run_session(session_dir, model, device)
+
+            case 6:
+                score_session(session_dir)
+
             case 0:
                 print('\n')
                 print("exit program...")

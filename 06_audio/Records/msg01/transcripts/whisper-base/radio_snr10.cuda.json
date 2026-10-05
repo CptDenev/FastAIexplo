@@ -1,0 +1,12 @@
+{
+  "model": "whisper-base",
+  "file": "radio_snr10.wav",
+  "text": "Comme d'autres, ils s'y charlient, n'est-ce que de situation où j'aurais tête, n'est-ce que de situation position actuelle au point de l'île, qu'on paye un uniforme, d'Eltat et d'Eltat 52, d'Eltat 3, avec une culpe l'un des observés en direction d'Orette, ils s'en revient 2 km. Un drôle n'a perçu au-dessus de l'accrète, à 14h20, aucun bel essai, l'émission à 60%. On a tendu la position jusqu'à 16h, qui a reçu vers le point de vos mots bravaux. Demandez à appuyer l'observation sur l'accrète, comment vous recevez-vous, parlez.",
+  "device": "cuda",
+  "latency_s": 4.437,
+  "audio_s": 30.36,
+  "rtf": 0.1462,
+  "load_s": 3.4,
+  "params_m": 74,
+  "gpu_mem_mb": 274
+}

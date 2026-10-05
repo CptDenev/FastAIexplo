@@ -1,0 +1,12 @@
+{
+  "model": "whisper-base",
+  "file": "snr10.wav",
+  "text": "Quand l'eau de l'issage de situation, je répète, l'issage de situation, position actuelle au point de mille, 31 uniformes, delta, tbe, 4, 5, 2, 7, 1, 3 véhicules blindés observés en direction de reste, distance environ 2 kilomètres, un drôle n'a perçu au-dessus de la crête à 14h20, aucun bel essai, l'émission à 60%, maintenant la position jusqu'à 16h, qui rend plus vers le coin de groupe Montbravo, demande à appuyer l'observation",
+  "device": "cuda",
+  "latency_s": 0.782,
+  "audio_s": 30.36,
+  "rtf": 0.0258,
+  "load_s": 3.4,
+  "params_m": 74,
+  "gpu_mem_mb": 242
+}

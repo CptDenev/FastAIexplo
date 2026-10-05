@@ -1,0 +1,12 @@
+{
+  "model": "whisper-small",
+  "file": "radio_snr5.wav",
+  "text": "Cando 2, qui est charlier, n'essaye de situation, j'aurai tête, n'essaye de situation, position actuelle au point de vie, 31 lignes formes. Delta T-Base, 4.2, 8.7, 1. Trois véhicules blindés observés en direction de R-X, distance environ 2 km. Un drone aperçu au-dessus de la crêpe, à 14h20, aucun blessé, une mission à 60%. On met en place la position jusqu'à 16h qui remplir le point de regroupement bravou. On demande d'appuyer l'observation sur la crêpe. Comment vous recevez-vous ? Parlez.",
+  "device": "cuda",
+  "latency_s": 1.392,
+  "audio_s": 30.36,
+  "rtf": 0.0458,
+  "load_s": 1.9,
+  "params_m": 244,
+  "gpu_mem_mb": 658
+}

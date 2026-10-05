@@ -1,0 +1,12 @@
+{
+  "model": "qwen3-asr-1.7b",
+  "file": "snr10.wav",
+  "text": "Cando 2 ici Charlie. Message de situation. Je répète message de situation. Position actuelle au point de vue 31 uniforme. Delta Kébec 40287. Trois véhicules blindés observés en direction de l'est. Distance environ deux kilomètres. Un drone aperçu au-dessus de la crête à 14h20. Aucun blessé. L'immunité à 60%. Notez maintenant la position jusqu'à 16h puis repouvez vers le point de regroupement Bravo. Demande d'appuyer observation sur la crête. Commande recevez-vous. Parlez.",
+  "device": "cuda",
+  "latency_s": 8.757,
+  "audio_s": 30.36,
+  "rtf": 0.2885,
+  "load_s": 11.6,
+  "params_m": 1700,
+  "gpu_mem_mb": 4622
+}

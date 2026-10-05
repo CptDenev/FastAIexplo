@@ -1,0 +1,12 @@
+{
+  "model": "qwen3-asr-1.7b",
+  "file": "snr20.wav",
+  "text": "Tango deux ici Charlie. Message de situation. Je répète, message de situation. Position actuelle au point de grille trente et un uniforme. Delta Tébec quatre cinq deux huit sept un. Trois véhicules blindés observés en direction nord-est, distance environ deux kilomètres. Un drone aperçu au-dessus de la crête à quatorze heures vingt. Aucun blessé. Munitions à soixante pour cent. Montre maintenant la position jusqu'à seize heures, puis replie vers le point de regroupement. Bravo. Demande d'appui observation sur la crête. Comment recevez-vous? Parlez.",
+  "device": "cuda",
+  "latency_s": 8.441,
+  "audio_s": 30.36,
+  "rtf": 0.2781,
+  "load_s": 11.6,
+  "params_m": 1700,
+  "gpu_mem_mb": 4622
+}

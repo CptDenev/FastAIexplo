@@ -22,6 +22,7 @@ DIGIT_LETTER_RE = re.compile(r"(?<=\d)(?=[^\W\d_])|(?<=[^\W\d_])(?=\d)")  # 31u 
 NUMBER_RE = re.compile(r"\d+")
 
 SNR_ORDER = ["clean", 20, 10, 5, 0]
+SIZE_CONDITIONS = ["snr10", "snr5", "snr0", "radio_snr10", "radio_snr5"]
 
 
 #---Normalization---
@@ -153,7 +154,7 @@ def score_session(session_dir, plot_snr=5, plot_device="cuda"):
     # accuracy does not depend on the device, plots use a single one to avoid duplicates
     plot_rows = [r for r in rows if r["device"] == plot_device] or rows
     plot_vs_snr(plot_rows, session_dir / "wer_keywords_vs_snr.png")
-    plot_vs_size(plot_rows, plot_snr, session_dir / f"keywords_vs_size_snr{plot_snr}.png")
+    plot_vs_size(plot_rows, session_dir / "keywords_vs_size.png")
     return rows
 
 #---Plots---
@@ -193,30 +194,37 @@ def plot_vs_snr(rows, out_path):
     fig.savefig(out_path, dpi=150)
     plt.close(fig)
     print(f"saved {out_path.name}")
- 
 
-#Keyword recall vs model size at a fixed SNR (white noise only).
-def plot_vs_size(rows, snr, out_path):
-    
-    sel = sorted(
-        (r for r in rows if r["snr_db"] == snr and not r["radio"] and r["params_m"]),
-        key=lambda r: r["params_m"],
-    )
-    if not sel:
-        print(f"no rows at {snr} dB, size plot skipped")
-        return
  
-    fig, ax = plt.subplots(figsize=(6, 4))
-    ax.plot([r["params_m"] for r in sel], [r["kw_recall"] * 100 for r in sel], "-o")
-    for r in sel:
-        ax.annotate(r["model"], (r["params_m"], r["kw_recall"] * 100),
-                    textcoords="offset points", xytext=(5, 5), fontsize=8)
+#keyword recall vs model size, one line per noise condition.
+def plot_vs_size(rows, out_path):
+    sizes = sorted({(r["params_m"], r["model"]) for r in rows if r["params_m"]})
+    if not sizes:
+        print("no model sizes, size plot skipped")
+        return
+
+    fig, ax = plt.subplots(figsize=(7, 4.5))
+    for i, cond in enumerate(SIZE_CONDITIONS):
+        style = "--s" if cond.startswith("radio") else "-o"
+        for j, family in enumerate(("whisper", "qwen3")):
+            sel = sorted(
+                (r for r in rows if r["condition"] == cond and r["params_m"]
+                and r["model"].startswith(family)),
+                key=lambda r: r["params_m"],
+            )
+            if sel:
+                ax.plot([r["params_m"] for r in sel], [r["kw_recall"] * 100 for r in sel],
+                        style, color=f"C{i}", label=cond if j == 0 else None)
+
     ax.set_xscale("log")
-    ax.set_xlabel("parameters (millions, log scale)")
+    ax.set_xticks([p for p, _ in sizes])
+    ax.set_xticklabels([m for _, m in sizes], rotation=20, fontsize=8)
+    ax.minorticks_off()
+    ax.set_xlabel("model (log scale of parameters)")
     ax.set_ylabel("keyword recall (%)")
     ax.set_ylim(0, 105)
-    ax.set_title(f"keyword recall at {snr} dB SNR")
     ax.grid(alpha=0.3)
+    ax.legend(fontsize=8)
     fig.tight_layout()
     fig.savefig(out_path, dpi=150)
     plt.close(fig)

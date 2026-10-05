@@ -1,0 +1,12 @@
+{
+  "model": "qwen3-asr-0.6b",
+  "file": "original.wav",
+  "text": "Tango 2 ici Charlie message de situation je répète message de situation position actuelle au point de grille 31 uniforme Delta Québec 452 871 trois véhicules blindés observés en direction de l'Est distance environ 2 km un drone a perçu au-dessus de la crête à 14h20 aucun blessé munition à 60% mont maintenant la position jusqu'à 16h puis replie vers le point de regroupement Bravo demande appuyée observation sur la crête comment recevez-vous parlez",
+  "device": "cuda",
+  "latency_s": 6.599,
+  "audio_s": 30.36,
+  "rtf": 0.2174,
+  "load_s": 25.5,
+  "params_m": 600,
+  "gpu_mem_mb": 2112
+}

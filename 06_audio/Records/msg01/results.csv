@@ -1,0 +1,29 @@
+model,params_m,device,condition,snr_db,radio,wer,sub,del,ins,kw_recall,kw_missed,latency_s,rtf
+qwen3-asr-0.6b,600,cuda,clean,,False,0.1348,8,2,2,0.7857,charlie un;trente et un uniform;nord est,6.599,0.2174
+qwen3-asr-0.6b,600,cuda,radio_snr10,10,True,0.2809,20,3,2,0.3571,tango deux;charlie un;trente et un uniform;delta québec;quatre cinq deux;huit sept un;trois véhicules blindés;nord est;point de regroupement bravo,6.637,0.2186
+qwen3-asr-0.6b,600,cuda,radio_snr5,5,True,0.4607,31,5,5,0.2143,tango deux;charlie un;trente et un uniform;delta québec;quatre cinq deux;huit sept un;trois véhicules blindés;nord est;quatorze heures vingt;seize heures;point de regroupement bravo,7.713,0.2541
+qwen3-asr-0.6b,600,cuda,snr0,0,False,0.6292,38,13,5,0.0714,tango deux;charlie un;trente et un uniform;delta québec;quatre cinq deux;huit sept un;trois véhicules blindés;nord est;deux kilomètres;quatorze heures vingt;soixante pour cent;seize heures;point de regroupement bravo,6.955,0.2291
+qwen3-asr-0.6b,600,cuda,snr10,10,False,0.191,13,2,2,0.7143,charlie un;trente et un uniform;delta québec;nord est,6.633,0.2185
+qwen3-asr-0.6b,600,cuda,snr20,20,False,0.1236,8,2,1,0.7857,charlie un;trente et un uniform;nord est,6.691,0.2204
+qwen3-asr-0.6b,600,cuda,snr5,5,False,0.2135,14,3,2,0.5714,tango deux;charlie un;trente et un uniform;delta québec;nord est;point de regroupement bravo,6.512,0.2145
+qwen3-asr-1.7b,1700,cuda,clean,,False,0.0899,5,1,2,0.7857,charlie un;trente et un uniform;nord est,7.814,0.2574
+qwen3-asr-1.7b,1700,cuda,radio_snr10,10,True,0.2584,15,5,3,0.5,tango deux;charlie un;trente et un uniform;delta québec;quatre cinq deux;huit sept un;nord est,8.039,0.2648
+qwen3-asr-1.7b,1700,cuda,radio_snr5,5,True,0.2472,14,7,1,0.5,tango deux;charlie un;trente et un uniform;delta québec;quatre cinq deux;huit sept un;point de regroupement bravo,7.65,0.252
+qwen3-asr-1.7b,1700,cuda,snr0,0,False,0.4719,32,6,4,0.3571,tango deux;charlie un;trente et un uniform;delta québec;quatre cinq deux;huit sept un;nord est;quatorze heures vingt;point de regroupement bravo,7.845,0.2584
+qwen3-asr-1.7b,1700,cuda,snr10,10,False,0.2022,12,3,3,0.5,tango deux;charlie un;trente et un uniform;delta québec;quatre cinq deux;huit sept un;nord est,8.757,0.2885
+qwen3-asr-1.7b,1700,cuda,snr20,20,False,0.0899,5,2,1,0.7857,charlie un;trente et un uniform;delta québec,8.441,0.2781
+qwen3-asr-1.7b,1700,cuda,snr5,5,False,0.2697,14,6,4,0.4286,tango deux;charlie un;trente et un uniform;delta québec;quatre cinq deux;huit sept un;nord est;point de regroupement bravo,8.744,0.288
+whisper-base,74,cuda,clean,,False,0.1573,10,2,2,0.7143,charlie un;trente et un uniform;nord est;point de regroupement bravo,0.684,0.0225
+whisper-base,74,cuda,radio_snr10,10,True,0.809,44,0,28,0.2857,tango deux;charlie un;trente et un uniform;delta québec;quatre cinq deux;huit sept un;trois véhicules blindés;nord est;drone;point de regroupement bravo,4.437,0.1462
+whisper-base,74,cuda,radio_snr5,5,True,1.0,0,89,0,0.0,tango deux;charlie un;trente et un uniform;delta québec;quatre cinq deux;huit sept un;trois véhicules blindés;nord est;deux kilomètres;drone;quatorze heures vingt;soixante pour cent;seize heures;point de regroupement bravo,4.426,0.1458
+whisper-base,74,cuda,snr0,0,False,1.0,0,89,0,0.0,tango deux;charlie un;trente et un uniform;delta québec;quatre cinq deux;huit sept un;trois véhicules blindés;nord est;deux kilomètres;drone;quatorze heures vingt;soixante pour cent;seize heures;point de regroupement bravo,4.924,0.1622
+whisper-base,74,cuda,snr10,10,False,0.4494,26,8,6,0.4286,tango deux;charlie un;trente et un uniform;delta québec;huit sept un;nord est;drone;point de regroupement bravo,0.782,0.0258
+whisper-base,74,cuda,snr20,20,False,0.2697,16,1,7,0.5714,charlie un;trente et un uniform;delta québec;quatre cinq deux;nord est;point de regroupement bravo,0.732,0.0241
+whisper-base,74,cuda,snr5,5,False,0.8539,41,0,35,0.3571,tango deux;charlie un;trente et un uniform;delta québec;huit sept un;trois véhicules blindés;nord est;quatorze heures vingt;point de regroupement bravo,1.018,0.0335
+whisper-small,244,cuda,clean,,False,0.2135,8,2,9,0.7857,charlie un;trente et un uniform;nord est,1.309,0.0431
+whisper-small,244,cuda,radio_snr10,10,True,0.382,17,6,11,0.5714,tango deux;charlie un;trente et un uniform;delta québec;nord est;point de regroupement bravo,1.322,0.0435
+whisper-small,244,cuda,radio_snr5,5,True,0.4157,23,2,12,0.5,tango deux;charlie un;trente et un uniform;delta québec;quatre cinq deux;nord est;point de regroupement bravo,1.392,0.0458
+whisper-small,244,cuda,snr0,0,False,0.7191,45,0,19,0.3571,tango deux;charlie un;trente et un uniform;quatre cinq deux;huit sept un;trois véhicules blindés;nord est;quatorze heures vingt;point de regroupement bravo,1.351,0.0445
+whisper-small,244,cuda,snr10,10,False,0.3371,16,5,9,0.6429,tango deux;charlie un;trente et un uniform;delta québec;nord est,1.226,0.0404
+whisper-small,244,cuda,snr20,20,False,0.1461,8,2,3,0.7857,charlie un;trente et un uniform;nord est,1.231,0.0405
+whisper-small,244,cuda,snr5,5,False,0.3596,19,5,8,0.5714,tango deux;charlie un;trente et un uniform;delta québec;nord est;quatorze heures vingt,1.367,0.045

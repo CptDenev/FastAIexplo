@@ -1,0 +1,12 @@
+{
+  "model": "qwen3-asr-0.6b",
+  "file": "snr5.wav",
+  "text": "Tandou deux, ici Charlie message de situation, je répète message de situation position actuelle au point de vue 31 uniforme Delta 745287 un trois véhicules blindés observés en direction de S distance environ 2 km un drone a perçu au-dessus de la crête à 14h20 aucun blessé mission à 60% vous mettons la position jusqu'à 16h qui repère le point de rebondement Bravo demande depuis l'observation sur la crête comment recevez-vous parlez",
+  "device": "cuda",
+  "latency_s": 6.512,
+  "audio_s": 30.36,
+  "rtf": 0.2145,
+  "load_s": 25.5,
+  "params_m": 600,
+  "gpu_mem_mb": 2112
+}

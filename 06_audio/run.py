@@ -37,6 +37,41 @@ def run_session(session_dir, model_name, device=None):
     #check if gpu available
     baseline_mb = gpu_used_mb() if device == "cuda" else None
 
+    #measure time to load
+    t0 = time.perf_counter()
+    model = load_model(model_name, device)
+    load_s = time.perf_counter() - t0
+    print(f"loaded {model_name} on {device} in {load_s:.1f} s")
+
+    #warmup: the first call pays CUDA init and kernel setup, it is not measured
+    model.transcribe(files[0])
+ 
+    for path in files:
+        audio_s = sf.info(str(path)).duration
+ 
+        t0 = time.perf_counter()
+        text = model.transcribe(path)
+        latency_s = time.perf_counter() - t0
+ 
+        record = {
+            "model": model_name,
+            "file": path.name,
+            "text": text,
+            "device": device,
+            "latency_s": round(latency_s, 3),
+            "audio_s": round(audio_s, 2),
+            "rtf": round(latency_s / audio_s, 4),
+            "load_s": round(load_s, 1),
+            "params_m": MODELS[model_name]["params_m"],
+            # approximate, device-wide; None on CPU for now
+            "gpu_mem_mb": round(gpu_used_mb() - baseline_mb) if device == "cuda" else None,
+        }
+        out_path = out_dir / f"{path.stem}.{device}.json"
+        out_path.write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"{path.name:<18} {latency_s:6.2f} s | RTF {record['rtf']:.3f} | {text[:50]}")
+ 
+    return out_dir
+
 
 
 def main():

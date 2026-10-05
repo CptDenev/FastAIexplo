@@ -1,0 +1,12 @@
+{
+  "model": "whisper-small",
+  "file": "snr5.wav",
+  "text": "122, ici Charlie, message de situation. J'aurais peut-être un message de situation. Position actuelle au point de midi, 31 uniforme. Delta T-Bike, 4-5-2-8-7-1. Trois véhicules blindés observés en direction de restes, distance environ 2 km. Un drone aperçu au-dessus de la crêpe, à 4 heures 20. Aucun blessé, l'émission à 60%. On met maintenant la position jusqu'à 16 heures, qui entre vers le point de regroupement bravo. Demandez pour l'observation sur la crêpe. Allez !",
+  "device": "cuda",
+  "latency_s": 1.367,
+  "audio_s": 30.36,
+  "rtf": 0.045,
+  "load_s": 1.9,
+  "params_m": 244,
+  "gpu_mem_mb": 658
+}

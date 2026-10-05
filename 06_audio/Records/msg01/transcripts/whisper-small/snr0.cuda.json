@@ -1,0 +1,12 @@
+{
+  "model": "whisper-small",
+  "file": "snr0.wav",
+  "text": "Tant d'autres assistes charliens, messages de situations, des raquettes, des messages de situations, des positions actuelles au point de vie, 31 et une somme. Delta, Québec, 400 000, 171. Trois des assistes blindés observés, on dirait qu'on ne reste plus de temps pendant deux kilomètres. Un drône aperçu au-dessus de la crèche, la crèche rejoint 20. Autant de l'esprit, une mission à 60%. Nous mettons la position jusqu'à 16h et on tire le point de vos gros bras vos. Demandez à tous les observations sur la crèche. Comment vous recevez une parlie ?",
+  "device": "cuda",
+  "latency_s": 1.351,
+  "audio_s": 30.36,
+  "rtf": 0.0445,
+  "load_s": 1.9,
+  "params_m": 244,
+  "gpu_mem_mb": 658
+}

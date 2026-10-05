@@ -1,0 +1,12 @@
+{
+  "model": "qwen3-asr-0.6b",
+  "file": "radio_snr5.wav",
+  "text": "Tandou deux, qui cherchait le message de situation, le rétète, l'espion rétuel au point de vue, 31 minutes avant, Delta T L, Cap 32, 17h30, un véhicule blindé observé en direction de Red, distance environ 2 km, un drone aperçu au-dessus de la crête à 10h20, aucun blessé, mission à 60%. On mettant la position jusqu'à 10h, qui repoussait le point de rebondement Bravo, demande depuis l'observation sur la crête comment vous recevez parler.",
+  "device": "cuda",
+  "latency_s": 7.713,
+  "audio_s": 30.36,
+  "rtf": 0.2541,
+  "load_s": 25.5,
+  "params_m": 600,
+  "gpu_mem_mb": 2112
+}

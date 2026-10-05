@@ -1,0 +1,12 @@
+{
+  "model": "whisper-small",
+  "file": "radio_snr10.wav",
+  "text": "Cambo 2, ici Charlie, message de situation. J'aurais peut-être message de situation. Position actuelle au point de l'Union 31, uniforme. Delta T-Bike 452-871. Trois véhicules blindés et observés en direction de restes, distance environ 2 km. Un drone aperçu au-dessus de la crêpe, à 14h20. Aucun blessé, l'unition à 60%. On met maintenant la position jusqu'à 16h, puis remplir le point de vos groupes. Mon bravo. Demande d'appuyer l'observation sur la crêpe. Allez.",
+  "device": "cuda",
+  "latency_s": 1.322,
+  "audio_s": 30.36,
+  "rtf": 0.0435,
+  "load_s": 1.9,
+  "params_m": 244,
+  "gpu_mem_mb": 658
+}

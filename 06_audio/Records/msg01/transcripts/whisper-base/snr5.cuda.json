@@ -1,0 +1,12 @@
+{
+  "model": "whisper-base",
+  "file": "snr5.wav",
+  "text": "Comme d'autres qu'ils s'y charlient, il s'agit d'un message de situation. Il y aurait qu'être qu'une message de situation. Petition actuelle au point de l'île 31 uniforme. Delta TDIC, 452, 271. C'est quoi l'équipe blanc d'ayant observé ? En direction de l'orace, il se passe environ 2 km. Un drone a perçu au-dessus de l'acquête à 4h20. Pour qu'un bel essai, l'émission a 60% On mette maintenant la position jusqu'à 16h, qui entue l'air le point de l'ouvre Mont-Bravou. Demandez à l'équipe certainisation sur l'acquête. C'est comment de recevoir l'air.",
+  "device": "cuda",
+  "latency_s": 1.018,
+  "audio_s": 30.36,
+  "rtf": 0.0335,
+  "load_s": 3.4,
+  "params_m": 74,
+  "gpu_mem_mb": 242
+}
