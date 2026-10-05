@@ -30,6 +30,7 @@ def _time(m):
     hours = f"{m.group(1)} heures"
     return f"{hours} {m.group(2)}" if m.group(2) else hours
 
+#split in digit by digit uf number are xxx form
 def _number(m):
     digits = m.group()
     if len(digits) >= DIGIT_BY_DIGIT_MIN:
@@ -38,6 +39,7 @@ def _number(m):
         words = num2words(int(digits), lang="fr")
     return f" {words} "
 
+#replace accent by standard character
 def strip_accents(text):
     return "".join(
         c for c in unicodedata.normalize("NFD", text) if unicodedata.category(c) != "Mn"
@@ -89,13 +91,68 @@ def score_session(session_dir, plot_snr=5, plot_device="cuda"):
 #---Plots---
 
 def _cond_key(row):
-    pass
-
+    return "clean" if row["snr_db"] is None else row["snr_db"]
+ 
+ 
 def plot_vs_snr(rows, out_path):
-    pass
-
+    """WER and keyword recall vs SNR, one color per model, dashed = radio effect."""
+    pos = {c: i for i, c in enumerate(SNR_ORDER)}
+    models = sorted({r["model"] for r in rows}, key=lambda m: next(
+        (r["params_m"] or 0) for r in rows if r["model"] == m))
+ 
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4))
+    for i, model in enumerate(models):
+        for radio, style, suffix in ((False, "-o", ""), (True, "--s", " (radio)")):
+            sel = sorted(
+                (r for r in rows if r["model"] == model and r["radio"] == radio),
+                key=lambda r: pos[_cond_key(r)],
+            )
+            if not sel:
+                continue
+            xs = [pos[_cond_key(r)] for r in sel]
+            axes[0].plot(xs, [r["wer"] * 100 for r in sel], style, color=f"C{i}", label=model + suffix)
+            axes[1].plot(xs, [r["kw_recall"] * 100 for r in sel], style, color=f"C{i}", label=model + suffix)
+ 
+    for ax in axes:
+        ax.set_xticks(range(len(SNR_ORDER)))
+        ax.set_xticklabels([str(c) for c in SNR_ORDER])
+        ax.set_xlabel("SNR (dB)")
+        ax.grid(alpha=0.3)
+    axes[0].set_ylabel("WER (%)")
+    axes[1].set_ylabel("keyword recall (%)")
+    axes[1].set_ylim(0, 105)
+    axes[1].legend(fontsize=8)
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150)
+    plt.close(fig)
+    print(f"saved {out_path.name}")
+ 
+ 
 def plot_vs_size(rows, snr, out_path):
-    pass
+    """Keyword recall vs model size at a fixed SNR (white noise only)."""
+    sel = sorted(
+        (r for r in rows if r["snr_db"] == snr and not r["radio"] and r["params_m"]),
+        key=lambda r: r["params_m"],
+    )
+    if not sel:
+        print(f"no rows at {snr} dB, size plot skipped")
+        return
+ 
+    fig, ax = plt.subplots(figsize=(6, 4))
+    ax.plot([r["params_m"] for r in sel], [r["kw_recall"] * 100 for r in sel], "-o")
+    for r in sel:
+        ax.annotate(r["model"], (r["params_m"], r["kw_recall"] * 100),
+                    textcoords="offset points", xytext=(5, 5), fontsize=8)
+    ax.set_xscale("log")
+    ax.set_xlabel("parameters (millions, log scale)")
+    ax.set_ylabel("keyword recall (%)")
+    ax.set_ylim(0, 105)
+    ax.set_title(f"keyword recall at {snr} dB SNR")
+    ax.grid(alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150)
+    plt.close(fig)
+    print(f"saved {out_path.name}")
 
 #---Manual check---
 def check(session_dir, text):
