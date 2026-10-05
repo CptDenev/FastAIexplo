@@ -10,12 +10,21 @@ from models import MODELS, default_device, load_model
 
 RECORD_DIR = Path(__file__).resolve().parent / "Records"
 
-
+#original.wav first, then the noisy files in a stable order.
 def session_files(session_dir):
-    pass
+    original = session_dir / "original.wav"
+    if not original.exists():
+        raise FileNotFoundError(f"{original} not found, run add_noise first")
+    noisy = sorted((session_dir / "noisy").glob("*.wav"))
+    if not noisy:
+        print("warning: no noisy files, only original.wav will be transcribed")
+    return [original] + noisy
 
+#device-wide GPU memory in use => warning count other process and not tight to only that script
 def gpu_used_mb():
-    pass
+    free, total = torch.cuda.mem_get_info()
+    return (total - free) / 1024 ** 2
+
 
 def run_session(session_dir, model_name, device=None):
     pass
