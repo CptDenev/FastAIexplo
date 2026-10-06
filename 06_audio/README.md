@@ -119,3 +119,4 @@ On this single recording, whisper-small is the smallest model that holds across 
 - Streaming transcription instead of complete recorded files.
 - An optimized backend for Qwen (vLLM on Linux) and int8 quantization, to compare models on equal engines.
 - CPU measurements.
+- Apple Silicon support, MPS for the Qwen adapter, an MLX-based adapter for Whisper.
