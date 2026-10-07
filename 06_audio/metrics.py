@@ -133,8 +133,11 @@ def score_session(session_dir, plot_snr=5, plot_device="cuda"):
             "snr_db": snr,
             "radio": radio,
             "wer": round(w["wer"], 4),
+            #substitute words (WER compute)
             "sub": w["sub"],
+            #deleted words (WER compute)
             "del": w["del"],
+            #inserted words (WER compute)
             "ins": w["ins"],
             "kw_recall": round(len(found) / len(keywords), 4),
             "kw_missed": ";".join(missed),

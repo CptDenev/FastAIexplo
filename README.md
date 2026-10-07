@@ -19,6 +19,7 @@
 | [03_predictive_maintenance](03_predictive_maintenance) | Machine failure prediction | MLP vs Random Forest | AI4I 2020 | 2.6 MB | ✅ |
 | [04_segmentation](04_segmentation) | Land-cover segmentation | U-Net from scratch vs pretrained encoder | LoveDA | 118 MB | 🚧 Deployment in progress |
 | [05_transformer](05_transformer) | Small language model from scratch | Decoder-only transformer | TinyStories | — | 🚧 |
+| [06_audio](06_audio) | ASR benchmark on degraded signal | Whisper and Qwen | Clean record signal in French | — | ✅ |
 
 **Next**: synthetic training data generated in Unreal Engine 5 for segmentation, measuring the gap between synthetic and real images (separate repository).
 
