@@ -6,8 +6,9 @@ from dataclasses import dataclass
 SEED = 33
 
 #paths
-DATA_DIR = str(Path(__file__).resolve().parent / "data")
-CHECKPOINT_DIR = str(Path(__file__).resolve().parent / "checkpoints")
+BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = str(BASE_DIR / "data")
+CHECKPOINT_DIR = str(BASE_DIR / "checkpoints")
 TOKENIZER_PATH = os.path.join(DATA_DIR, "tokenizer.json")
 TRAIN_BIN = os.path.join(DATA_DIR, "train.bin")
 VAL_BIN = os.path.join(DATA_DIR, "val.bin")

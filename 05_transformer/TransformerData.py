@@ -96,7 +96,7 @@ def load_tokenizer():
 
 def prepare_data(subset_size = TRAIN_SUBSET_SIZE, force = False):
     files = [TOKENIZER_PATH, TRAIN_BIN, VAL_BIN]
-    if not force and all(os.path.exist(f) for f in files):
+    if not force and all(os.path.exists(f) for f in files):
         print("Data already prepared, skipping...")
         return load_tokenizer()
 
@@ -191,7 +191,6 @@ def test_get_batch(tok):
     #visual check : same text, y starts one token later
     print(repr(tok.decode(x[0, :40].tolist(), skip_special_tokens=False)))
     print(repr(tok.decode(y[0, :40].tolist(), skip_special_tokens=False)))
-
 
 
 #---Sanity check---
