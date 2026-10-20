@@ -133,16 +133,7 @@ def check_bin(path, n_tokens, n_stories, tokenizer):
 
 #full pipeline checks, run after prepare_data(force=True)
 def test_preparation():
-    pass
-
-def test_get_batch(tok):
-    pass
-
-
-
-#---Sanity check---
-def main():
-    train, val = load_raw(50_000)
+    train, val = load_raw(TRAIN_SUBSET_SIZE)
     print(len(train), len(val))
     print(repr(train[0]))
 
@@ -150,23 +141,22 @@ def main():
 
     #vocab size
     vocab_size = tok.get_vocab_size()
-    excpeted = ModelConfig().vocab_size
-    print(f"{'OK' if vocab_size == excpeted else 'FAIL'} : vocab size {vocab_size} (expected {excpeted})")
-    
+    expected = ModelConfig().vocab_size
+    print(f"{'OK' if vocab_size == expected else 'FAIL'} : vocab size {vocab_size} (expected {expected})")
+
     #special tokens ids
     bos_id = tok.token_to_id(BOS_TOKEN)
     eos_id = tok.token_to_id(EOS_TOKEN)
-    print(f"{'OK' if (bos_id, eos_id) == (0,1) else 'FAIL'} : bos={bos_id} eos={eos_id} expected 0 and 1")
+    print(f"{'OK' if (bos_id, eos_id) == (0, 1) else 'FAIL'} : bos={bos_id} eos={eos_id} expected 0 and 1")
 
     #visual check of tokenization
     enc = tok.encode("Once upon a time")
     print(f"tokens  : {enc.tokens}")
     print(f"ids     : {enc.ids}")
 
-    #test if encode then decode == original text
+    #encode then decode == original text
     ok = all(tok.decode(tok.encode(t).ids) == t for t in train[:100])
     print(f"{'OK' if ok else 'FAIL'} : round trip on 100 stories")
-
 
     n_train = encode_split(train, tok, TRAIN_BIN)
     check_bin(TRAIN_BIN, n_train, len(train), tok)
@@ -174,8 +164,41 @@ def main():
     n_val = encode_split(val, tok, VAL_BIN)
     check_bin(VAL_BIN, n_val, len(val), tok)
 
+    return tok
+
+def test_get_batch(tok):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    cfg = TrainConfig()
+
+    x, y = get_batch("train", cfg, device, np.random.default_rng(SEED))
+
+    #shapes and dtype
+    ok = x.shape == y.shape == (cfg.batch_size, cfg.block_size)
+    print(f"{'OK' if ok else 'FAIL'} : shape {tuple(x.shape)} dtype {x.dtype} device {x.device}")
+
+    #shift : y is x moved one token to the left
+    ok = torch.equal(x[:, 1:], y[:, :-1])
+    print(f"{'OK' if ok else 'FAIL'} : y is x shifted by one")
+
+    #reproducibility : same seed, same batch
+    x2, _ = get_batch("train", cfg, device, np.random.default_rng(SEED))
+    print(f"{'OK' if torch.equal(x, x2) else 'FAIL'} : same seed gives same batch")
+
+    #val split works too
+    xv, yv = get_batch("val", cfg, device, np.random.default_rng(SEED))
+    print(f"{'OK' if xv.shape == (cfg.batch_size, cfg.block_size) else 'FAIL'} : val batch shape {tuple(xv.shape)}")
+
+    #visual check : same text, y starts one token later
+    print(repr(tok.decode(x[0, :40].tolist(), skip_special_tokens=False)))
+    print(repr(tok.decode(y[0, :40].tolist(), skip_special_tokens=False)))
+
+
+
+#---Sanity check---
+def main():
     tok = prepare_data()
     test_get_batch(tok)
+
 
 
 if __name__ == '__main__':
