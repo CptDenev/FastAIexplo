@@ -96,7 +96,7 @@ def load_tokenizer():
 
 def prepare_data(subset_size = TRAIN_SUBSET_SIZE, force = False):
     files = [TOKENIZER_PATH, TRAIN_BIN, VAL_BIN]
-    if not force and all(0.path.exist(f) for f in files):
+    if not force and all(os.path.exist(f) for f in files):
         print("Data already prepared, skipping...")
         return load_tokenizer()
 
@@ -131,6 +131,13 @@ def check_bin(path, n_tokens, n_stories, tokenizer):
     #average story length
     print(f"avg tokens per story : {n_tokens / n_stories :.1f}")
 
+#full pipeline checks, run after prepare_data(force=True)
+def test_preparation():
+    pass
+
+def test_get_batch(tok):
+    pass
+
 
 
 #---Sanity check---
@@ -140,6 +147,7 @@ def main():
     print(repr(train[0]))
 
     tok = train_tokenizer(train)
+
     #vocab size
     vocab_size = tok.get_vocab_size()
     excpeted = ModelConfig().vocab_size
@@ -165,6 +173,9 @@ def main():
 
     n_val = encode_split(val, tok, VAL_BIN)
     check_bin(VAL_BIN, n_val, len(val), tok)
+
+    tok = prepare_data()
+    test_get_batch(tok)
 
 
 if __name__ == '__main__':
